@@ -422,19 +422,6 @@ class Embryo(object):
         cells = [c for c in pos_tmp if not np.isnan(pos_tmp[c][0])]
         pos = np.array([pos_tmp[c] for c in cells])
         return cells, pos
-            
-    # def reconstruct_intermediate(self, rigid=True, th_d=True, cs=None):
-    #     if cs is not None:
-    #         cs_to_treat = cs
-    #     else:
-    #         cs_to_treat = self.all_cover_slips
-    #     for i, cs1 in enumerate(cs_to_treat[:-1]):
-    #         cs2 = cs_to_treat[i+1]
-    #         M1 = self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
-    #         self.get_KDTree_GG(cs1, source=cs1)
-    #         self.get_KDTree_GG(cs2, source=cs1)
-    #         # self.build_trajectories(cs1, source=cs1)
-    #         # self.build_trajectories(cs2, source=cs1)
         
     def plot_coverslip(self, cs, pos='pos', ax=None,
                        tissues_to_plot=None, legend=False,
