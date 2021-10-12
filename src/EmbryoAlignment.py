@@ -647,7 +647,7 @@ class Embryo(object):
 
     def plot_slice(self, angle, color_map, rot_orig=[0, 0, 1], origin=[0, 0, 0],
                    thickness=30, tissues=None, angle_unit='degree',
-                   nb_interp=5):
+                   nb_interp=5, output_path=None, **kwargs):
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -673,8 +673,12 @@ class Embryo(object):
         color_to_plot = color_to_plot[p_order]
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(1, 1, 1)#, projection='3d')
-        ax.scatter(*(points_to_plot.T[:-1]), s=5, color=color_to_plot)
+        kwargs_scatter = { 's':5, 'color':color_to_plot}
+        kwargs_scatter.update(kwargs)
+        ax.scatter(*(points_to_plot.T[:-1]), **kwargs_scatter)
         ax.axis('equal')
+        if output_path is not None:
+            fig.savefig(output_path)
         return points_to_plot
 
     def ply_slice(self, file_name, angle, color_map, rot_orig=[0, 0, 1],
