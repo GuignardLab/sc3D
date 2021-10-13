@@ -473,10 +473,11 @@ class Embryo(object):
             cells_final = np.array(cells_final)
 
             D = np.array([d for c, d in c_to_d.items()])
-            dpgmm = mixture.GaussianMixture(n_components=3, max_iter=1000,
-                                            covariance_type='full').fit(D.reshape(-1,1))
-            proba0 = dpgmm.predict_proba(D.reshape(-1, 1))[:, 0]
-            proba1 = dpgmm.predict_proba(D.reshape(-1, 1))[:, 1]
+            gmm = mixture.GaussianMixture(n_components=3, max_iter=1000,
+                                          covariance_type='full').fit(D.reshape(-1,1))
+            order = np.argsort(gmm.means_, axis=0)
+            proba0 = gmm.predict_proba(D.reshape(-1, 1))[:, order[0,0]]
+            proba1 = gmm.predict_proba(D.reshape(-1, 1))[:, order[1,0]]
             self.filtered_cells.update(cells_final[(th<proba0)|(th<proba1)])
         self.cells.intersection_update(self.filtered_cells)
         self.all_cells = set(self.all_cells).intersection(self.filtered_cells)
@@ -577,9 +578,8 @@ class Embryo(object):
         dist_to_disapear = interp1d([min_to_closest, med_to_closest, max_to_closest],
                                     [start, mid, end], bounds_error=False, fill_value=(start, end))
 
-        start_points = {}
         cells_to_treat = set(self.all_cells)
-        all_trajs = []
+        all_trajs = {}
         if genes is not None and isinstance(genes, list):
             all_expr = {}
         elif not isinstance(genes, list):
@@ -627,14 +627,15 @@ class Embryo(object):
             # f_traj_x = Rbf(z_traj, pos_traj_x, smooth=.5)#, function='gaussian', smooth=2)
             # f_traj_y = Rbf(z_traj, pos_traj_y, smooth=.5)#, function='gaussian', smooth=2)
 
-            all_trajs.append([traj[0], min(z_traj), max(z_traj), f_traj_x, f_traj_y])
+            all_trajs[traj[0]] = [min(z_traj), max(z_traj), f_traj_x, f_traj_y]
             cells_to_treat -= set(traj)
         self.all_trajs = all_trajs
         self.all_expr = all_expr
 
-    def plot_slice(self, angle, color_map, rot_orig=[0, 0, 1], origin=[0, 0, 0],
+    def plot_slice(self, angle, color_map=None, rot_orig=[0, 0, 1], origin=[0, 0, 0],
                    thickness=30, tissues=None, angle_unit='degree',
-                   nb_interp=5, output_path=None, **kwargs):
+                   nb_interp=5, output_path=None, gene=None,
+                   figsize=(5, 5), **kwargs):
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -646,7 +647,7 @@ class Embryo(object):
         rot_composed = rot_x@rot_y@rot_z
         new_axis = (np.hstack([rot_orig, 1])@rot_composed)[:-1]
         equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
-        points, color = self.produce_em(nb_interp, tissues)
+        points, color = self.produce_em(nb_interp, tissues, gene=gene)
         points = np.array(points)
         color = np.array(color)
         dist_to_plan = equation(points)
@@ -654,13 +655,19 @@ class Embryo(object):
         dist_to_plan = dist_to_plan[plan]
         points_to_plot = points[plan]
         points_to_plot = (np.hstack([points_to_plot, [[1]]*points_to_plot.shape[0]])@rot_composed)[:, :-1]
-        color_to_plot = np.array([color_map[c] for c in color[plan]])
+        if gene is None:
+            color_to_plot = np.array([color_map[c] for c in color[plan]])
+        else:
+            color_to_plot = color[plan]
         p_order = np.argsort(dist_to_plan)
         points_to_plot = points_to_plot[p_order]
         color_to_plot = color_to_plot[p_order]
-        fig = plt.figure(figsize=(8, 8))
+        fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(1, 1, 1)#, projection='3d')
-        kwargs_scatter = { 's':5, 'color':color_to_plot}
+        if gene is None:
+            kwargs_scatter = { 's':5, 'color':color_to_plot}
+        else:
+            kwargs_scatter = { 's':5, 'c':color_to_plot}
         kwargs_scatter.update(kwargs)
         ax.scatter(*(points_to_plot.T[:-1]), **kwargs_scatter)
         ax.axis('equal')
@@ -671,7 +678,7 @@ class Embryo(object):
     def ply_slice(self, file_name, angle, color_map, rot_orig=[0, 0, 1],
                   origin=[0, 0, 0], thickness=30, tissues=None,
                   tissues_colored=None, angle_unit='degree',
-                  nb_interp=5):
+                  gene=None, nb_interp=5):
         if tissues is None:
             tissues = self.all_tissues
         if tissues_colored is None:
@@ -685,18 +692,26 @@ class Embryo(object):
         rot_composed = rot_x@rot_y@rot_z
         new_axis = (np.hstack([rot_orig, 1])@rot_composed)[:-1]
         equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
-        points, color = self.produce_em(nb_interp, tissues)
+        points, color = self.produce_em(nb_interp, tissues, gene=gene)
         points = np.array(points)
         color = np.array(color)
         plan = (np.abs(equation(points))<thickness)
         points_to_plot = points[plan]
         color_to_plot = color[plan]
-        mapping = np.array([[.8, .8, .8] for t in range(max(color_map)+1)])
-        for t in tissues_colored:
-            mapping[t] = color_map.get(t, [.8, .8, .8])
+        if gene is None:
+            mapping = np.array([[.8, .8, .8] for t in range(max(color_map)+1)])
+            for t in tissues_colored:
+                mapping[t] = color_map.get(t, [.8, .8, .8])
+        else:
+            min_v = np.percentile(color_to_plot, 1)
+            max_v = np.percentile(color_to_plot, 99)
+            color_to_plot = plt.cm.viridis((color_to_plot - min_v)/(max_v - min_v))[:,:-1]
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points_to_plot)
-        pcd.colors = o3d.utility.Vector3dVector(mapping[color_to_plot])
+        if gene is None:
+            pcd.colors = o3d.utility.Vector3dVector(mapping[color_to_plot])
+        else:
+            pcd.colors = o3d.utility.Vector3dVector(color_to_plot)
         o3d.io.write_point_cloud(file_name, pcd)
         
         return points_to_plot
@@ -764,7 +779,7 @@ class Embryo(object):
         colors = []
         if gene_list is not None:
             gene_expr = [[] for _ in range(len(gene_list))]
-        for c, min_z, max_z, traj_x, traj_y in self.all_trajs:
+        for c, (min_z, max_z, traj_x, traj_y) in self.all_trajs.items():
             if tissues_to_plot is None or self.tissue[c] in tissues_to_plot:
                 spacing = new_spacing[(min_z<=new_spacing)&(new_spacing<=max_z)]
                 points.extend(zip(traj_x(spacing), traj_y(spacing), spacing))
