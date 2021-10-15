@@ -71,12 +71,17 @@ The pairing was the one that minimizes the sum of the distances between paired b
 The distances were computed after applying the coarse grain transformation.
 From this pairing, as previously, we computed the rigid transformation \(R^*_{i\leftarrow j}\) that minimizes the sum of the square of the distances between the paired beads (see eq.\eqref{eq:rigid}).
 \section{Interpolation}
-\paragraph{}As shown earlier, the distance between two consecutive beads within the same puck is significantly smaller than the one between two pucks (one order of magnitude in our case, 6\(\mu m\) versus 30\(\mu m\)). This property makes it that some analysis of the 3D volume of the embryo is difficult or even not possible. If one wants to study a plane that is tilted by a small angle to the original puck planes, the beads become too scarce. To overcome this issue, we designed an algorithm to interpolate beads in between pucks. The goal is to create beads where there would likely be and to assign them gene expression values that are likely to be correct.
-\paragraph{}To interpolate beads between puck, we first pair beads from the same tissues (similarly to the pairing that was done in \ref{subsec:ali-ref}). We then assume a continuity of expression and position to interpolate the them. These hypothesis are the basis of this interpolation.
+\paragraph{}As shown earlier, the distance between two consecutive beads within the same puck is significantly smaller than the one between two pucks (one order of magnitude in our case, \(30\mu m\) versus \(6\mu m\)). This property makes it that some analysis of the 3D volume of the embryo is difficult or even not possible. For example, if one wants to study a plane that is tilted by a small angle to the original puck planes, the beads become too scarce. To overcome this issue, we designed an algorithm to interpolate beads in between pucks. The goal is to create beads where there would likely be and to assign them gene expression values that are likely to be correct.
+\paragraph{}To interpolate beads between pucks, we first paired beads from the same tissues (similarly to the pairing that was done in \ref{subsec:ali-ref}).
+We then assumed a continuity of expression and position to interpolate the beads.
+The continuity of expression and position hypotheses is the basis of this interpolation.
+This means that the interpolation is likely to be incorrect when looking at tissues within which the cells are randomly positioned such as blood cells for example.
 \subsection{Bead pairings and paths}
 \paragraph{}Beads from consecutive pucks were paired based on their proximity.
 As explained earlier, we used a linear assignment algorithm to pair beads.
-Linear sum alignment require that a positive cost is computed between any beads that can be paired together.
+The linear sum alignment formulation requires for a positive cost to be computed between any beads that can be paired together.
 Here, we used as our cost function the Euclidian distance.
-The bead pairing between consecutive pucks creates paths of beads. A path of beads is a set of beads that are paired sequentially by the puck to puck pairing. For example \(b_{i,j}\) is paired to \(b_{i+1,k}\) which is paired to \(b_{i+2,l}\). These beads are paired and a  creating the path \(Pa=(b_{i,j}, b_{i+1,k},b_{i+2,l})\).
+The bead pairing between consecutive pucks creates paths of beads. A path of beads is a set of beads that are paired sequentially by the puck to puck pairing. For example \(b_{i,j}\) is paired to \(b_{i+1,k}\) which is paired to \(b_{i+2,l}\). These beads are paired and creating the path \(Pa=(b_{i,j}, b_{i+1,k},b_{i+2,l})\). We can create the set of all possible paths \(\{Pa_{ij}\}\) where \(i,j\) refers to the first bead (\(b_{i,j}\)) in the path.
+\subsection{Interpolation}
+\paragraph{}To interpolate beads between slices we used the paths that we created. A path has \(z\) coordinates along which the interpolation is done. Then, given a variable \(x_{i,j}\) (for example the position in \(x\) or the expression of a gene \(g\)) along the path, we build the spline interpolation of \(x\) along \(z\). We repeated the operation for the \(x\) and \(y\) positions and for all genes of interest.
 \end{document}
