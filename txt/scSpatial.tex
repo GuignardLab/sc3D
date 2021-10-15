@@ -10,13 +10,12 @@
 \title{Puck alignment and interpolation}
 
 \DeclareMathOperator*{\argmax}{arg\,max}
-
 \begin{document}
 \maketitle
 \paragraph{}When doing spatial single-cell transcriptomics, beads are recorded from pucks.
 Beads are place on a 2D matrix where each bead is spaced by a given distance $x_{res}$ (resp.
 $y_{res}$) along the $x$ (resp.
-$y$) dimension (in our case $x_{res}=y_{res}={\color{red}XX} \mu m$).
+$y$) dimension (in our case $x_{res}=y_{res}=XX \mu m$).
 These distances define the $xy$ resolution (or lateral resolution) of the slice or puck.
 Then, consecutive pucks are spaced by a given distance $z_{res}$ defining the $z$ resolution (or axial resolution) of the dataset (in our case $z_{res}=30\mu m$).
 \paragraph{}Because the pucks are physically moved between their slicing and their acquisition, they are not acquired within the same frame (meaning that they are not aligned).
@@ -34,7 +33,7 @@ Let then \(\mathcal{P}\) be ordered such that \(\forall i,j,~i<j\iff c_P(P_i)<c_
 \paragraph{}Moreover, using the previously described analysis, we can associate each bead to the tissue it most likely belongs to from the previous analyses, the function \(T:b_{ij}\in P_i\rightarrow t\in\mathcal{T}\) where \(t\in\mathcal{T}\) is a unique identifier for a tissue and \(\mathcal{T}\) is the set of tissues.
 Similarly, to each bead is associated a value for each given gene analysed in the dataset.
 This value is correlated to the level of expression of said gene for said bead.
-Given a gene \(g\), we define the function $E_g:b_{ij}\in P_i\rightarrow e\in\mathbb{R}\) which maps the value \(e\) of expression of the gene \(g\) to the bead \(b_{ij}\).
+Given a gene \(g\), we define the function \(E_g:b_{ij}\in P_i\rightarrow e\in\mathbb{R}\) which maps the value \(e\) of expression of the gene \(g\) to the bead \(b_{ij}\).
 %
 \section{Pre-processing}
 \subsection{Removing the remaining outliers}
@@ -44,7 +43,7 @@ To do so we first computed the distance between any given bead and its closest b
 We then analysed the distribution of these distances by fitting a gaussian mixture model fixing the number of components to 3.
 The \(1^{st}\) and \(2^{nd}\) components are the one with the two means and are distributions of distances between real beads.
 The \(3^{rd}\) component with the higher mean is the distribution of distances of noisy beads.
-We then discarded all the beads that had a distance to their closest neighbor from the same tissue which had a probability to belong to the first or second component were lower than \(th_{gmm}\) (in our case \({\color{red}XX}\%\)).
+We then discarded all the beads that had a distance to their closest neighbor from the same tissue which had a probability to belong to the first or second component were lower than \(th_{gmm}\) (in our case \({XX}\%\)).
 \section{Aligning the pucks}
 \paragraph{}As previously mentioned, due to the nature of the acquisition process, consecutive pucks do not live within the same frame.
 They are therefore not spatially comparable.
@@ -54,14 +53,14 @@ Ultimately we can compose all the transformations together to register any puck 
 To compute the transformation necessary to register two consecutive pucks, we first performed a coarse grain alignment using the center of mass of a subset of the different tissue types.
 We then refined the alignment by pairing beads across the pucks and by aligning them.
 \subsection{Coarse grain alignment}
-\paragraph{}We first chose a subset of tissues \(\mathcal{L}\subset\mathcal{T}\) that are spatially localised (for example heart tube precursor beads or {\color{red}somite precursor} beads). 
-We then discarded (only for the coarse grain alignment) tissues that were spread in space (for example {\color{red}blood} beads).
+\paragraph{}We first chose a subset of tissues \(\mathcal{L}\subset\mathcal{T}\) that are spatially localised (for example heart tube precursor beads or {somite precursor} beads). 
+We then discarded (only for the coarse grain alignment) tissues that were spread in space (for example {blood} beads).
 An exhaustive list of the discarded tissue types can be found bellow.
 \paragraph{}Then we computed the alignment transformation (\(r_{i\leftarrow j}^*\)) as the rigid transformation (translation plus rotation) that minimizes the sum of the squared distances between corresponding tissue types center of mass:
 \begin{eqnarray}\label{eq:rigid}
-r_{i\leftarrow j}^*&=&\argmax_{r\in\mathcal{R}} \big\{\sum_{t\in \mathcal{L}}||COM_i(t)-r[COM_j(t)]||_2\big\}
+r_{i\leftarrow j}^*&=&\argmax_{r\in\mathcal{R}} \big\{\sum_{t\in \mathcal{L}}\| COM_i(t)-r[COM_j(t)]\|_2\big\}
 \end{eqnarray}
-where \(COM_i(t)\) is the position of the center of mass of the tissue \(t\) in the puck \(i\), \(||\cdot||_2\) is the L2 norm and \(\mathcal{R}\) is the set of all rigid transformations.
+where \(COM_i(t)\) is the position of the center of mass of the tissue \(t\) in the puck \(i\), \(\|\cdot\|_2\) is the L2 norm and \(\mathcal{R}\) is the set of all rigid transformations.
 \(r[COM_j(t)]\) is therefore the position of the center of mass of the tissue \(t\) in the puck \(j\) after application of the rigid transformation \(r\).
 \paragraph{}We then applied the composition of the necessary transformations to register all pucks onto the first puck.
 For example, to register the puck \(j\) onto the puck \(0\), we applied the transformation \(r_{0\leftarrow j}^*=r_{0\leftarrow 1}^*\circ r_{1\leftarrow 2}^*\circ \cdots \circ r_{j-1\leftarrow j}^*\).
