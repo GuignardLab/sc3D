@@ -6,6 +6,8 @@ from scipy.optimize import linear_sum_assignment
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from itertools import combinations
 from matplotlib import pyplot as plt
+from itertools import combinations
+from sklearn.decomposition import PCA
 import open3d as o3d
 import pandas as pd
 import anndata
@@ -796,6 +798,56 @@ class Embryo(object):
             return points, colors, gene_expr
         else:
             return points, colors
+
+    def get_differential_genes(self, t,
+                               plot=True,
+                               th_diff=1.2,
+                               th_bins=1,
+                               nb_bins=5,
+                               th_expr=.5,
+                               exclusion_func=None):
+        pca = PCA(n_components=3)
+        if exclusion_func is not None:
+            cells = np.array([c for c in self.all_cells if self.tissue[c]==t if self.final[c][0]<0])
+        else:
+            cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
+        pos = np.array([list(self.final[c]) + [self.z_pos[c]] for c in cells])
+        new_pos = pca.fit_transform(pos)
+        order = [np.argsort(new_pos[:,0])]
+        order.append(np.argsort(new_pos[:,1]))
+        order.append(np.argsort(new_pos[:,2]))
+        data = self.anndata.copy()
+        expressing_genes = th_expr<np.mean(data[cells,:].X, axis=0)
+        if plot:
+            import seaborn as sns
+            plot_data = {}
+            plot_data['mean'] = np.mean(data[cells,:].X, axis=0)
+            plot_data['std'] = np.std(data[cells,:].X, axis=0)
+            sns.displot(plot_data, x='mean', y='std', binwidth=(.5, .25), cbar=True)
+        data.X[data.X<th_expr]=np.nan
+        gene_names = set()
+        gene_names_axe = {}
+        for axe in range(3):
+            pos_compressed = new_pos[:,axe]
+            bins = np.linspace(np.percentile(pos_compressed, 1),
+                               np.percentile(pos_compressed, 99),
+                               nb_bins+1)
+            bin_cells = [cells[(bins[i]<pos_compressed) & (pos_compressed<bins[i+1])] for i in range(nb_bins)]
+            val_bin = []
+            for v in bin_cells:
+                mean = np.nanmean(data[v,:].X, axis=0).toarray()
+                mean[np.isnan(mean)] = 0
+                val_bin.append(mean)
+            val_bin = np.array(val_bin).T
+            val_bin[np.isnan(val_bin)]=0
+            expr_diff = np.array([np.abs(val_bin[:,c1]-val_bin[:,c2])
+                                  for c1, c2 in list(combinations(range(nb_bins), 2))])
+
+            candidate_genes = np.where((th_bins<np.sum(th_diff<expr_diff, axis=0))&expressing_genes)[0]
+            gene_names.update(data.var_names[candidate_genes])
+            gene_names_axe[axe] = data.var_names[candidate_genes]
+        return gene_names, gene_names_axe
+
 
     def __init__(self, data_path, tissues_to_ignore=None,
                  corres_tissue=None, tissue_weight=None,
