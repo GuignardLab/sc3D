@@ -427,7 +427,7 @@ class Embryo(object):
         
     def plot_coverslip(self, cs, pos='pos', ax=None,
                        tissues_to_plot=None, legend=False,
-                       color=None, **kwargs):
+                       color=None, cells=None, **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
         else:
@@ -436,20 +436,22 @@ class Embryo(object):
             positions_attr = self.__getattribute__(pos)
         else:
             positions_attr = pos
-        if tissues_to_plot is None:
-            positions = np.array([positions_attr[c] for c in self.cells_from_cover_slip[cs]])
-            tissues = [self.tissue[c] for c in self.cells_from_cover_slip[cs]]
-        else:
+        if tissues_to_plot is None and cells is None:
+            cells = self.cells_from_cover_slip[cs]
+        elif cells is None:
             cells = [c for c in self.cells_from_cover_slip[cs] if self.tissue[c] in tissues_to_plot]
-            positions = np.array([positions_attr[c] for c in cells])
-            tissues = [self.tissue[c] for c in cells]
+        positions = np.array([positions_attr[c] for c in cells])
+        tissues = [self.tissue[c] for c in cells]
         if len(positions)<1:
             return fig, ax
         scatter_args = {'marker':'.', 's':25, 'cmap':'tab20',
                         'vmin':min(self.all_tissues), 'vmax':max(self.all_tissues)}
         scatter_args.update(kwargs)
-        if color == None:
+        if color is None:
             color = tissues
+            # scatter_args['c'] = color
+        elif isinstance(color, dict):
+            color = [color.get(t, [.8,]*3) for t in tissues]
         scatter = ax.scatter(*positions.T, c=color, **scatter_args)
         if legend:
             ax.legend(handles=scatter.legend_elements()[0], labels=np.unique(tissues))
