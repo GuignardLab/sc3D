@@ -681,6 +681,7 @@ class Embryo(object):
                 final_C[:,1] = V[on_channel[1]]
                 final_C[:,2] = V[on_channel[2]]
                 if path_scale:
+                    scale_square = np.zeros((256, 256, 3))
                     V1 = np.linspace(0, max_g1, 256)
                     V2 = np.linspace(0, max_g2, 256)
                     VS = np.array([V1, V2])
