@@ -639,8 +639,8 @@ class Embryo(object):
     def plot_slice(self, angle, color_map=None, rot_orig=[0, 0, 1], origin=[0, 0, 0],
                    thickness=30, tissues=None, angle_unit='degree',
                    nb_interp=5, output_path=None, gene=None,
-                    min_g1=None, min_g2=None, max_g1=None, max_g2=None,
-                   figsize=(5, 5), **kwargs):
+                   min_g1=None, min_g2=None, max_g1=None, max_g2=None,
+                   main_bi_color='g', figsize=(5, 5), **kwargs):
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -652,29 +652,35 @@ class Embryo(object):
         rot_composed = rot_x@rot_y@rot_z
         new_axis = (np.hstack([rot_orig, 1])@rot_composed)[:-1]
         equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
-        if not isinstance(gene, str):
-            colors = []
-            for g in gene:
-                points, color = embryo.produce_em(nb_interp, tissues, gene=g)
-                colors.append(color)
-            C = np.array(colors)
-            if min_g1 is None:
-                min_g1 = np.percentile(C, 2, axis=1)[0]
-            if min_g2 is None:
-                min_g2 = np.percentile(C, 2, axis=1)[1]
-            if max_g1 is None:
-                max_g1 = np.percentile(C, 98, axis=1)[0]
-            if max_g2 is None:
-                max_g2 = np.percentile(C, 98, axis=1)[1]
-            V = (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
-            V[V<0] = 0
-            V[1<V] = 1
-            final_C = np.zeros((len(colors[0]), 3))
-            final_C[:,0] = V[1]
-            final_C[:,1] = V[0]
-            final_C[:,2] = V[1]
+        if gene is not None and not isinstance(gene, str):
+            if len(gene)==1:
+                gene = gene[0]
+                points, color = self.produce_em(nb_interp, tissues, gene=gene)
+                color = np.array(color)
+            else:    
+                colors = []
+                for g in gene:
+                    points, color = self.produce_em(nb_interp, tissues, gene=g)
+                    colors.append(color)
+                C = np.array(colors)
+                if min_g1 is None:
+                    min_g1 = np.percentile(C, 2, axis=1)[0]
+                if min_g2 is None:
+                    min_g2 = np.percentile(C, 2, axis=1)[1]
+                if max_g1 is None:
+                    max_g1 = np.percentile(C, 98, axis=1)[0]
+                if max_g2 is None:
+                    max_g2 = np.percentile(C, 98, axis=1)[1]
+                V = (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
+                V[V<0] = 0
+                V[1<V] = 1
+                final_C = np.zeros((len(colors[0]), 3))
+                on_channel = (np.array(['r', 'g', 'b'])==main_bi_color.lower()).astype(int)
+                final_C[:,0] = V[on_channel[0]]
+                final_C[:,1] = V[on_channel[1]]
+                final_C[:,2] = V[on_channel[2]]
         else:
-            points, color = embryo.produce_em(nb_interp, tissues, gene=gene)
+            points, color = self.produce_em(nb_interp, tissues, gene=gene)
             color = np.array(color)
         points = np.array(points)
         dist_to_plan = equation(points)
@@ -703,6 +709,7 @@ class Embryo(object):
         if output_path is not None:
             fig.savefig(output_path)
         return points_to_plot
+    
     def ply_slice(self, file_name, angle, color_map, rot_orig=[0, 0, 1],
                   origin=[0, 0, 0], thickness=30, tissues=None,
                   tissues_colored=None, angle_unit='degree',
