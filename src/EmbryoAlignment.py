@@ -640,7 +640,7 @@ class Embryo(object):
                    thickness=30, tissues=None, angle_unit='degree',
                    nb_interp=5, output_path=None, gene=None,
                    min_g1=None, min_g2=None, max_g1=None, max_g2=None,
-                   main_bi_color='g', figsize=(5, 5), **kwargs):
+                   main_bi_color='g', figsize=(5, 5), path_scale=None, **kwargs):
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -671,7 +671,8 @@ class Embryo(object):
                     max_g1 = np.percentile(C, 98, axis=1)[0]
                 if max_g2 is None:
                     max_g2 = np.percentile(C, 98, axis=1)[1]
-                V = (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
+                norm = lambda C: (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
+                V = norm(C)
                 V[V<0] = 0
                 V[1<V] = 1
                 final_C = np.zeros((len(colors[0]), 3))
@@ -679,6 +680,31 @@ class Embryo(object):
                 final_C[:,0] = V[on_channel[0]]
                 final_C[:,1] = V[on_channel[1]]
                 final_C[:,2] = V[on_channel[2]]
+                if path_scale:
+                    V1 = np.linspace(0, max_g1, 256)
+                    V2 = np.linspace(0, max_g2, 256)
+                    VS = np.array([V1, V2])
+                    VS = norm(VS)
+                    VS[VS<0] = 0
+                    VS[1<VS] = 1
+                    scale_square[...,np.where(on_channel)[0][0]] = VS[0]
+                    for ax in np.where(1-on_channel)[0]:
+                        scale_square[...,ax] = VS[1].reshape(-1, 1)
+                    # scale_square[...,np.where(1-on_channel)[0]]
+                    fig, ax = plt.subplots(figsize=(5, 5))
+                    ax.imshow(scale_square.swapaxes(1, 0), origin='lower')
+                    recap_g1 = lambda x: x*255/max_g1
+                    recap_g2 = lambda x: x*255/max_g2
+                    vals_g1 = np.arange(np.floor(max_g1)+1, dtype=int)
+                    vals_g2 = np.arange(np.floor(max_g2)+1, dtype=int)
+                    ax.set_xticks(recap_g1(vals_g1))
+                    ax.set_yticks(recap_g2(vals_g2))
+                    ax.set_xticklabels(vals_g1)
+                    ax.set_yticklabels(vals_g2)
+                    ax.set_xlabel(gene[0])
+                    ax.set_ylabel(gene[1])
+                    fig.tight_layout()
+                    fig.savefig(path_scale)
         else:
             points, color = self.produce_em(nb_interp, tissues, gene=gene)
             color = np.array(color)
