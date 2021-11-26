@@ -1146,7 +1146,7 @@ class Embryo(object):
         ax.set_title(self.corres_tissue[t])
         fig.tight_layout()
         if path_to_fig is not None:
-            fig.savefig(f'{x}_{y}_{corres_tissues[t]}.pdf')
+            fig.savefig(f'{x}_{y}_{self.corres_tissue[t]}.pdf')
 
     def print_diff_expr_genes(self, tissue, nb):
         data_plot = self.diff_expressed_3D[tissue]
