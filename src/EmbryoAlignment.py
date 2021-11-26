@@ -1016,6 +1016,8 @@ class Embryo(object):
         data_plot['Distance_to_reg'] = np.abs((data_y_reshaped-
                                                regr.predict(data_x_reshaped))[:,0])
         data_plot['Interesting genes'] = interesting_genes
+        data_plot['Gene names'] = np.array(self.anndata[:,data_plot['Interesting genes']].var_names)
+        data_plot = pd.DataFrame(data_plot)
 
         return data_plot
 
