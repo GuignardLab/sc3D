@@ -908,7 +908,7 @@ class Embryo(object):
             gene_names_axe[axe] = data.var_names[candidate_genes]
         return gene_names, gene_names_axe
 
-    def threshold_otsu(values, nbins=256):
+    def threshold_otsu(self, values, nbins=256):
         """Return threshold value based on Otsu's method.
             Parameters
             ----------
@@ -968,8 +968,8 @@ class Embryo(object):
     def cell_groups(self, t, th_vol=.1):
         from sklearn import linear_model
 
-        data = embryo.anndata.copy().X
-        cells = np.array([c for c in embryo.all_cells if embryo.tissue[c]==t])
+        data = self.anndata.copy().X
+        cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
@@ -990,7 +990,7 @@ class Embryo(object):
         avg_nb_neighbs = []
         for g in interesting_genes:
             nb_N_for_g = self.neighbs(g, sub_data, cells)
-            avg_nb_neighbs.append(nb_N_for_g / whole_tissue_nb_N[t])
+            avg_nb_neighbs.append(nb_N_for_g / self.whole_tissue_nb_N[t])
         avg_nb_neighbs = np.array(avg_nb_neighbs)
 
         # Build a dataframe with the previously computed metrics
@@ -1020,15 +1020,27 @@ class Embryo(object):
         return data_plot
 
     def get_3D_differential_expression(self, tissues_to_process, th_vol=.025):
-        cells = list(embryo.all_cells)
-        pos_3D = [np.array(list(embryo.final[c])+[embryo.z_pos[c]]) for c in cells]
+        cells = list(self.all_cells)
+        pos_3D = [np.array(list(self.final[c])+[self.z_pos[c]]) for c in cells]
 
-        self.full_GG = self.build_gabriel_graph(cells, pos_3D)
-        self.gene_expr_th = self.compute_expr_thresholds()
+        if not hasattr(self, 'full_GG'):
+            self.full_GG = self.build_gabriel_graph(cells, pos_3D)
 
-        self.diff_expressed_3D = {}
+        if not hasattr(self, 'gene_expr_th'):
+            self.gene_expr_th = self.compute_expr_thresholds()
+
+        if not hasattr(self, 'whole_tissue_nb_N'):
+            self.whole_tissue_nb_N = {}
+            for t in self.all_tissues:
+                cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
+                self.whole_tissue_nb_N[t] = np.median([len(self.full_GG[c]) for c in cells])
+
+        if not hasattr(self, 'diff_expressed_3D'):
+            self.diff_expressed_3D = {}
+            
         for t in tissues_to_process:
-            self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
+            if not t in self.diff_expressed_3D:
+                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
 
         self.tissues_diff_expre_processed = tissues_to_process
         return self.diff_expressed_3D
@@ -1038,17 +1050,19 @@ class Embryo(object):
                                    fig=None, ax=None):
         from collections import Counter
         tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
-        if len(tmp_T) != len(tissues_to_process):
+        if len(tmp_T) != 0:
             print("You asked to plot tissues that were not already processed")
             print("The following tissues will be ignored:")
-            for t in set(tissues_to_process).difference(tmp_T):
+            for t in tmp_T:
                 print(f"\t - {self.corres_tissue.get(t, f'no name found for tissue #{t}')}")
+        tissues_to_process = list(set(tissues_to_process).union(self.tissues_diff_expre_processed))
         genes_of_interest = []
         gene_dict = {}
         tissue_genes = {}
         genes_in = {}
         added_genes = 0 if repetition_allowed else 4
-        for t, data_t in self.diff_expressed_3D.items():
+        for t in tissues_to_process:
+            data_t = self.diff_expressed_3D[t]
             G_N = data_t['Interesting genes'][np.argsort(data_t['Distance_to_reg'])[:-nb_genes*added_genes-1:-1]]
             G_V = np.sort(data_t['Distance_to_reg'])[:-nb_genes*added_genes-1:-1]
             genes_of_interest.extend(G_N[:nb_genes])
@@ -1076,7 +1090,8 @@ class Embryo(object):
         values = np.zeros((nb_genes*len(tissues_to_process), len(tissues_to_process)))
         tissue_order = []
         for i, g in enumerate(genes_of_interest):
-            for j, (t, data_t) in enumerate(data.items()):
+            for j, t in enumerate(tissues_to_process):
+                data_t = self.diff_expressed_3D[t]
                 if g in data_t['Interesting genes']:
                     values[i, j] = data_t['Distance_to_reg'][np.where(data_t['Interesting genes']==g)][0]
                 if i==0:
@@ -1090,9 +1105,9 @@ class Embryo(object):
             fig = ax.get_figure()
         ax.imshow(z_score, interpolation='nearest', cmap='Reds')
         ax.set_xticks(range(len(tissue_order)))
-        ax.set_xticklabels([corres_tissues[t] for t in tissue_order], rotation=90)
+        ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
         ax.set_yticks(range(values.shape[0]))
-        ax.set_yticklabels(list(embryo.anndata[:,genes_of_interest].var_names))
+        ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
         fig.tight_layout()
 
     def __init__(self, data_path, tissues_to_ignore=None,
