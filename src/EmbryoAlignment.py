@@ -1050,71 +1050,71 @@ class Embryo(object):
             self.tissues_diff_expre_processed = tissues_to_process
         return self.diff_expressed_3D
 
-def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
-                               repetition_allowed=False, compute_z_score=True,
-                               fig=None, ax=None):
-    from collections import Counter
-    tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
-    if len(tmp_T) != 0:
-        print("You asked to plot tissue(s) that were not already processed")
-        print("The following tissue(s) will be ignored:")
-        for t in tmp_T:
-            print(f"\t - {t}")
-    tissues_to_process = list(set(tissues_to_process).intersection(self.tissues_diff_expre_processed))
-    genes_of_interest = []
-    gene_dict = {}
-    tissue_genes = {}
-    genes_in = {}
-    added_genes = 0 if repetition_allowed else 4
-    for t in tissues_to_process:
-        data_t = self.diff_expressed_3D[t]
-        G_N = data_t.sort_values('Distance_to_reg')['Interesting genes'][:-nb_genes*added_genes-1:-1]
-        G_V = data_t.sort_values('Distance_to_reg')['Distance_to_reg'][:-nb_genes*added_genes-1:-1]
-        genes_of_interest.extend(G_N[:nb_genes])
-        for g, v in zip(G_N, G_V):
-            tissue_genes.setdefault(g, []).append(t)
-            gene_dict[(t, g)] = v
-        genes_in[t] = list(G_N)
-
-    if not repetition_allowed:
-        dict_counter = Counter(genes_of_interest)
-        acc = 0
-        while any([1<k for k in dict_counter.values()]):
-            t = tissues_to_process[acc%len(tissues_to_process)]
-            for g in genes_in[t]:
-                if 1<dict_counter[g]:
-                    tissues = np.array(tissue_genes[g])
-                    values = [gene_dict[(t, g)] for t in tissues]
-                    if tissues[np.argsort(values)][-1]!=t:
-                        genes_in[t].remove(g)
-            genes_of_interest = []
-            for t in tissues_to_process:
-                genes_of_interest.extend(genes_in[t][:nb_genes])
-            dict_counter = Counter(genes_of_interest)
-            acc += 1
-    values = np.zeros((nb_genes*len(tissues_to_process), len(tissues_to_process)))
-    tissue_order = []
-    for i, g in enumerate(genes_of_interest):
-        for j, t in enumerate(tissues_to_process):
+    def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
+                                   repetition_allowed=False, compute_z_score=True,
+                                   fig=None, ax=None):
+        from collections import Counter
+        tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
+        if len(tmp_T) != 0:
+            print("You asked to plot tissue(s) that were not already processed")
+            print("The following tissue(s) will be ignored:")
+            for t in tmp_T:
+                print(f"\t - {t}")
+        tissues_to_process = list(set(tissues_to_process).intersection(self.tissues_diff_expre_processed))
+        genes_of_interest = []
+        gene_dict = {}
+        tissue_genes = {}
+        genes_in = {}
+        added_genes = 0 if repetition_allowed else 4
+        for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
-            if g in data_t['Interesting genes'].values:
-                values[i, j] = data_t[data_t['Interesting genes']==g]['Distance_to_reg']
-            if i==0:
-                tissue_order.append(t)
-    # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
-    if compute_z_score:
-        z_score = stats.zscore(values, axis=0)
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(5,max(5, round(1.5*nb_genes))))
-    if fig is None:
-        fig = ax.get_figure()
-    ax.imshow(z_score, interpolation='nearest', cmap='Reds')
-    ax.set_xticks(range(len(tissue_order)))
-    ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
-    ax.set_yticks(range(values.shape[0]))
-    ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
-    fig.tight_layout()
-    return fig, ax
+            G_N = data_t.sort_values('Distance_to_reg')['Interesting genes'][:-nb_genes*added_genes-1:-1]
+            G_V = data_t.sort_values('Distance_to_reg')['Distance_to_reg'][:-nb_genes*added_genes-1:-1]
+            genes_of_interest.extend(G_N[:nb_genes])
+            for g, v in zip(G_N, G_V):
+                tissue_genes.setdefault(g, []).append(t)
+                gene_dict[(t, g)] = v
+            genes_in[t] = list(G_N)
+
+        if not repetition_allowed:
+            dict_counter = Counter(genes_of_interest)
+            acc = 0
+            while any([1<k for k in dict_counter.values()]):
+                t = tissues_to_process[acc%len(tissues_to_process)]
+                for g in genes_in[t]:
+                    if 1<dict_counter[g]:
+                        tissues = np.array(tissue_genes[g])
+                        values = [gene_dict[(t, g)] for t in tissues]
+                        if tissues[np.argsort(values)][-1]!=t:
+                            genes_in[t].remove(g)
+                genes_of_interest = []
+                for t in tissues_to_process:
+                    genes_of_interest.extend(genes_in[t][:nb_genes])
+                dict_counter = Counter(genes_of_interest)
+                acc += 1
+        values = np.zeros((nb_genes*len(tissues_to_process), len(tissues_to_process)))
+        tissue_order = []
+        for i, g in enumerate(genes_of_interest):
+            for j, t in enumerate(tissues_to_process):
+                data_t = self.diff_expressed_3D[t]
+                if g in data_t['Interesting genes'].values:
+                    values[i, j] = data_t[data_t['Interesting genes']==g]['Distance_to_reg']
+                if i==0:
+                    tissue_order.append(t)
+        # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
+        if compute_z_score:
+            z_score = stats.zscore(values, axis=0)
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(5,max(5, round(1.5*nb_genes))))
+        if fig is None:
+            fig = ax.get_figure()
+        ax.imshow(z_score, interpolation='nearest', cmap='Reds')
+        ax.set_xticks(range(len(tissue_order)))
+        ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
+        ax.set_yticks(range(values.shape[0]))
+        ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
+        fig.tight_layout()
+        return fig, ax
 
     def plot_volume_vs_neighbs(self, t, print_top=None,
                                print_genes=None, fig=None, ax=None,
