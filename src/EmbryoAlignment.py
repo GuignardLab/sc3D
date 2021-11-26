@@ -1119,8 +1119,8 @@ class Embryo(object):
         return fig, ax
 
     def plot_volume_vs_neighbs(self, t, print_top=None,
-                               print_genes=None, fig=None, ax=None,
-                               output_path=None, **kwargs):
+                                   print_genes=None, fig=None, ax=None,
+                                   output_path=None, **kwargs):
         data_plot = self.diff_expressed_3D[t]
         if ax is None:
             fig, ax = plt.subplots(figsize=(10, 8))
@@ -1135,10 +1135,12 @@ class Embryo(object):
         ax.set_ylabel('Relative volume (to total tissue volume)')
         ax.set_xlabel('Relative cell density (to the average cell density within the tissue)')
         if print_top is not None:
-            for gene in data_plot.sort_values('Distance_to_reg',
-                                              ascending=False)[:print_top]:
-                txt = self.anndata[:,data_plot['Interesting genes'][gene]].var_names[0]
-                plt.text(x=data_plot[x][gene],y=data_plot[y][gene],s=txt,
+            top_X = data_plot.sort_values('Distance_to_reg', ascending=False)[:print_top]
+            x_values = top_X[x]
+            y_values = top_X[y]
+            names = top_X['Gene names']
+            for name, x, y in zip(names, x_values, y_values):
+                plt.text(x=x,y=y,s=name,
                          fontdict=dict(color='red',size=8, fontweight='bold'), va='baseline')
         if print_genes is not None:
             for gene in print_genes:
