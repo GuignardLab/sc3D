@@ -4,6 +4,7 @@ from scipy.spatial import KDTree, Delaunay
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
+from scipy import stats
 from itertools import combinations
 from matplotlib import pyplot as plt
 from itertools import combinations
@@ -496,8 +497,6 @@ class Embryo(object):
         for t, c in self.cells_from_tissue.items():
             c.intersection_update(self.filtered_cells)
 
-
-
     def reconstruct_intermediate(self, rigid=True,
                                  th_d=True, cs=None,
                                  multicore=True, genes=None):
@@ -860,13 +859,13 @@ class Embryo(object):
         else:
             return points, colors
 
-    def get_differential_genes(self, t,
-                               plot=True,
-                               th_diff=1.2,
-                               th_bins=1,
-                               nb_bins=5,
-                               th_expr=.5,
-                               exclusion_func=None):
+    def get_differential_genes_main_axis(self, t,
+                                         plot=True,
+                                         th_diff=1.2,
+                                         th_bins=1,
+                                         nb_bins=5,
+                                         th_expr=.5,
+                                         exclusion_func=None):
         pca = PCA(n_components=3)
         if exclusion_func is not None:
             cells = np.array([c for c in self.all_cells if self.tissue[c]==t if self.final[c][0]<0])
@@ -909,6 +908,189 @@ class Embryo(object):
             gene_names_axe[axe] = data.var_names[candidate_genes]
         return gene_names, gene_names_axe
 
+    def threshold_otsu(values, nbins=256):
+        """Return threshold value based on Otsu's method.
+            Parameters
+            ----------
+            image : array
+            Input image.
+            nbins : int
+            Number of bins used to calculate histogram. This value is ignored for
+            integer arrays.
+            Returns
+            -------
+            threshold : float
+            Threshold value.
+            References
+            ----------
+            .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
+        """
+        map(np.histogram, values)
+        hist, bin_edges = np.histogram(values, nbins)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.
+
+        hist = hist.astype(float)
+
+        # class probabilities for all possible thresholds
+        weight1 = np.cumsum(hist)
+        weight2 = np.cumsum(hist[::-1])[::-1]
+        # class means for all possible thresholds
+        mean1 = np.cumsum(hist * bin_centers) / weight1
+        mean2 = (np.cumsum((hist * bin_centers)[::-1]) / weight2[::-1])[::-1]
+
+        # Clip ends to align class 1 and class 2 variables:
+        # The last value of `weight1`/`mean1` should pair with zero values in
+        # `weight2`/`mean2`, which do not exist.
+        variance12 = weight1[:-1] * weight2[1:] * (mean1[:-1] - mean2[1:]) ** 2
+
+        idx = np.argmax(variance12)
+        threshold = bin_centers[:-1][idx]
+        return threshold
+
+    def compute_expr_thresholds(self):
+        # data = self.anndata.copy().X
+        out = map(self.threshold_otsu, self.anndata.X.T)
+        th = []
+        for o in out:
+            th += [o]
+        th = np.array(th)
+        return th
+
+    def neighbs(self, gene, sub_data, cells):
+        positive_cells = np.where(self.gene_expr_th[gene]<sub_data[:,gene])[0]
+        positive_cells = cells[positive_cells]
+        nb_neighbs = []
+        for p in positive_cells:
+            nb_neighbs.append(len([n for n in self.full_GG[p] if n in positive_cells]))
+        avg_nb_neighbs = np.mean(nb_neighbs)
+        return avg_nb_neighbs
+
+    def cell_groups(self, t, th_vol=.1):
+        from sklearn import linear_model
+
+        data = embryo.anndata.copy().X
+        cells = np.array([c for c in embryo.all_cells if embryo.tissue[c]==t])
+
+        # Spliting the array to only have tissue *t* cells
+        sub_data = data[cells]
+
+        # Occupied volume for the cells of tissue *t*
+        volume_total = len(cells)
+
+        # Volume ratio for cell expressing in a tissue for each gene
+        sub_volumes = np.sum(self.gene_expr_th<sub_data, axis=0) / volume_total
+
+        # Mask for the list of genes that are expressing enough within the tissue
+        mask_expr = (th_vol<sub_volumes)&(sub_volumes<1-th_vol)
+
+        # List of genes that are expressing enough within the tissue
+        interesting_genes = np.where(mask_expr)[0]
+
+        # Copmuting the number of cells expressing
+        avg_nb_neighbs = []
+        for g in interesting_genes:
+            nb_N_for_g = self.neighbs(g, sub_data, cells)
+            avg_nb_neighbs.append(nb_N_for_g / whole_tissue_nb_N[t])
+        avg_nb_neighbs = np.array(avg_nb_neighbs)
+
+        # Build a dataframe with the previously computed metrics
+        data_plot = {
+            'volume': sub_volumes[mask_expr],
+            'avg_nb_neighbs': avg_nb_neighbs,
+        }
+
+        # Compute the linear regression
+        # Value against which the linear regression is done
+        # It is important that the relationship between x and y is linear!!!
+        regression_x = 'avg_nb_neighbs'
+        regression_y = 'volume'
+
+        regr = linear_model.LinearRegression()
+        data_x_reshaped = data_plot[regression_x].reshape(-1,1)
+        data_y_reshaped = data_plot[regression_y].reshape(-1,1)
+        regr.fit(data_x_reshaped, data_y_reshaped)
+        b = regr.intercept_[0]
+        a = regr.coef_[0][0]
+        line = lambda x: (a*np.array(x)+b)
+
+        data_plot['Distance_to_reg'] = np.abs((data_y_reshaped-
+                                               regr.predict(data_x_reshaped))[:,0])
+        data_plot['Interesting genes'] = interesting_genes
+
+        return data_plot
+
+    def get_3D_differential_expression(self, tissues_to_process, th_vol=.025):
+        self.full_GG = self.build_gabriel_graph()
+        self.gene_expr_th = self.compute_expr_thresholds()
+
+        self.diff_expressed_3D = {}
+        for t in tissues_to_process:
+            self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
+
+        self.tissues_diff_expre_processed = tissues_to_process
+        return self.diff_expressed_3D
+
+    def plot_top_interesting_genes(self, tissues_to_process, nb_genes=20,
+                                   repetition_allowed=False, compute_z_score=True,
+                                   fig=None, ax=None):
+        from collections import Counter
+        tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
+        if len(tmp_T) != len(tissues_to_process):
+            print("You asked to plot tissues that were not already processed")
+            print("The following tissues will be ignored:")
+            for t in set(tissues_to_process).difference(tmp_T):
+                print(f"\t - {self.corres_tissue.get(t, f'no name found for tissue #{t}')}")
+        genes_of_interest = []
+        gene_dict = {}
+        tissue_genes = {}
+        genes_in = {}
+        added_genes = 0 if repetition_allowed else 4
+        for t, data_t in self.diff_expressed_3D.items():
+            G_N = data_t['Interesting genes'][np.argsort(data_t['Distance_to_reg'])[:-nb_genes*added_genes-1:-1]]
+            G_V = np.sort(data_t['Distance_to_reg'])[:-nb_genes*added_genes-1:-1]
+            genes_of_interest.extend(G_N[:nb_genes])
+            for g, v in zip(G_N, G_V):
+                tissue_genes.setdefault(g, []).append(t)
+                gene_dict[(t, g)] = v
+            genes_in[t] = list(G_N)
+
+        if not repetition_allowed:
+            dict_counter = Counter(genes_of_interest)
+            acc = 0
+            while any([1<k for k in dict_counter.values()]):
+                t = tissues_to_process[acc%len(tissues_to_process)]
+                for g in genes_in[t]:
+                    if 1<dict_counter[g]:
+                        tissues = np.array(tissue_genes[g])
+                        values = [gene_dict[(t, g)] for t in tissues]
+                        if tissues[np.argsort(values)][-1]!=t:
+                            genes_in[t].remove(g)
+                genes_of_interest = []
+                for t in tissues_to_process:
+                    genes_of_interest.extend(genes_in[t][:nb_genes])
+                dict_counter = Counter(genes_of_interest)
+                acc += 1
+        values = np.zeros((nb_genes*len(tissues_to_process), len(tissues_to_process)))
+        tissue_order = []
+        for i, g in enumerate(genes_of_interest):
+            for j, (t, data_t) in enumerate(data.items()):
+                if g in data_t['Interesting genes']:
+                    values[i, j] = data_t['Distance_to_reg'][np.where(data_t['Interesting genes']==g)][0]
+                if i==0:
+                    tissue_order.append(t)
+        # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
+        if compute_z_score:
+            z_score = stats.zscore(values, axis=0)
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(5,round(1.5*nb_genes)))
+        if fig is None:
+            fig = ax.get_figure()
+        ax.imshow(z_score, interpolation='nearest', cmap='Reds')
+        ax.set_xticks(range(len(tissue_order)))
+        ax.set_xticklabels([corres_tissues[t] for t in tissue_order], rotation=90)
+        ax.set_yticks(range(values.shape[0]))
+        ax.set_yticklabels(list(embryo.anndata[:,genes_of_interest].var_names))
+        fig.tight_layout()
 
     def __init__(self, data_path, tissues_to_ignore=None,
                  corres_tissue=None, tissue_weight=None,
