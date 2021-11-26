@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA
 import open3d as o3d
 import pandas as pd
 import anndata
+import seaborn as sns
 
 class Embryo(object):
     def set_zpos(self, z_space=30.):
@@ -879,7 +880,6 @@ class Embryo(object):
         data = self.anndata.copy()
         expressing_genes = th_expr<np.mean(data[cells,:].X, axis=0)
         if plot:
-            import seaborn as sns
             plot_data = {}
             plot_data['mean'] = np.mean(data[cells,:].X, axis=0)
             plot_data['std'] = np.std(data[cells,:].X, axis=0)
