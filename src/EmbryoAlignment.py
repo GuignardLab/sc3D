@@ -1065,7 +1065,7 @@ class Embryo(object):
         gene_dict = {}
         tissue_genes = {}
         genes_in = {}
-        added_genes = 0 if repetition_allowed else 4
+        added_genes = 1 if repetition_allowed else 4
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
             G_N = data_t.sort_values('Distance_to_reg')['Interesting genes'][:-nb_genes*added_genes-1:-1]
