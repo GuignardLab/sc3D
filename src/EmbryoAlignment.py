@@ -1103,12 +1103,12 @@ class Embryo(object):
                     tissue_order.append(t)
         # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
         if compute_z_score:
-            z_score = stats.zscore(values, axis=0)
+            values = stats.zscore(values, axis=0)
         if ax is None:
             fig, ax = plt.subplots(figsize=(5,max(5, round(1.5*nb_genes))))
         if fig is None:
             fig = ax.get_figure()
-        ax.imshow(z_score, interpolation='nearest', cmap='Reds')
+        ax.imshow(values, interpolation='nearest', cmap='Reds')
         ax.set_xticks(range(len(tissue_order)))
         ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
         ax.set_yticks(range(values.shape[0]))
@@ -1133,9 +1133,10 @@ class Embryo(object):
         legend = g.axes.get_legend()
         legend.set_title('Localization score')
         ax.set_ylabel('Relative volume (to total tissue volume)')
-        ax.set_xlabel('Relative number of neighbors (to the average number of neighbors in the tissue)')
+        ax.set_xlabel('Relative cell density (to the average cell density within the tissue)')
         if print_top is not None:
-            for gene in sort_values('Distance_to_reg', ascending=False)[:print_top]:
+            for gene in data_plot.sort_values('Distance_to_reg',
+                                              ascending=False)[:print_top]:
                 txt = self.anndata[:,data_plot['Interesting genes'][gene]].var_names[0]
                 plt.text(x=data_plot[x][gene],y=data_plot[y][gene],s=txt,
                          fontdict=dict(color='red',size=8, fontweight='bold'), va='baseline')
