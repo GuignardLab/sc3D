@@ -1052,7 +1052,7 @@ class Embryo(object):
 
     def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
                                    repetition_allowed=False, compute_z_score=True,
-                                   fig=None, ax=None):
+                                   fig=None, ax=None, output_path=None):
         from collections import Counter
         tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
         if len(tmp_T) != 0:
@@ -1114,11 +1114,13 @@ class Embryo(object):
         ax.set_yticks(range(values.shape[0]))
         ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
         fig.tight_layout()
+        if output_path is not None:
+            fig.savefig(output_path)
         return fig, ax
 
     def plot_volume_vs_neighbs(self, t, print_top=None,
                                print_genes=None, fig=None, ax=None,
-                              path_to_fig=None, **kwargs):
+                               output_path=None, **kwargs):
         data_plot = self.diff_expressed_3D[t]
         if ax is None:
             fig, ax = plt.subplots(figsize=(10, 8))
@@ -1145,8 +1147,8 @@ class Embryo(object):
                          fontdict=dict(color='red',size=8, fontweight='bold'), va='baseline')
         ax.set_title(self.corres_tissue[t])
         fig.tight_layout()
-        if path_to_fig is not None:
-            fig.savefig(f'{x}_{y}_{self.corres_tissue[t]}.pdf')
+        if output_path is not None:
+            fig.savefig(output_path)
 
     def print_diff_expr_genes(self, tissue, nb):
         data_plot = self.diff_expressed_3D[tissue]
