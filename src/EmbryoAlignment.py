@@ -1020,7 +1020,10 @@ class Embryo(object):
         return data_plot
 
     def get_3D_differential_expression(self, tissues_to_process, th_vol=.025):
-        self.full_GG = self.build_gabriel_graph()
+        cells = list(embryo.all_cells)
+        pos_3D = [np.array(list(embryo.final[c])+[embryo.z_pos[c]]) for c in cells]
+
+        self.full_GG = self.build_gabriel_graph(cells, pos_3D)
         self.gene_expr_th = self.compute_expr_thresholds()
 
         self.diff_expressed_3D = {}
