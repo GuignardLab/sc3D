@@ -319,6 +319,7 @@ class Embryo(object):
                         for i in delaunay_graph[e1].intersection(delaunay_graph[ni])]):
                     Gabriel_graph.setdefault(e1, set()).add(ni)
                     Gabriel_graph.setdefault(ni, set()).add(e1)
+
         final_GG = {}
         for e1, neighbs in Gabriel_graph.items():
             neighbs = np.array(list(neighbs))
