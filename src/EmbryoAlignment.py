@@ -1043,7 +1043,7 @@ class Embryo(object):
                 self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
 
         if hasattr(self, 'tissues_diff_expre_processed'):
-            self.tissues_diff_expre_processed.append(tissues_to_process)
+            self.tissues_diff_expre_processed.extend(tissues_to_process)
         else:
             self.tissues_diff_expre_processed = tissues_to_process
         return self.diff_expressed_3D
@@ -1054,8 +1054,8 @@ class Embryo(object):
         from collections import Counter
         tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
         if len(tmp_T) != 0:
-            print("You asked to plot tissues that were not already processed")
-            print("The following tissues will be ignored:")
+            print("You asked to plot tissue(s) that were not already processed")
+            print("The following tissue(s) will be ignored:")
             for t in tmp_T:
                 print(f"\t - {t}")
         tissues_to_process = list(set(tissues_to_process).intersection(self.tissues_diff_expre_processed))
