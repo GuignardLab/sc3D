@@ -1059,7 +1059,7 @@ class Embryo(object):
             print("You asked to plot tissue(s) that were not already processed")
             print("The following tissue(s) will be ignored:")
             for t in tmp_T:
-                print(f"\t - {t}")
+                print(f"\t - id: {t}, name: {self.corres_tissue[t]}")
         tissues_to_process = list(set(tissues_to_process).intersection(self.tissues_diff_expre_processed))
         genes_of_interest = []
         gene_dict = {}
