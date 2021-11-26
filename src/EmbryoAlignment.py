@@ -1042,10 +1042,13 @@ class Embryo(object):
             if not t in self.diff_expressed_3D:
                 self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
 
-        self.tissues_diff_expre_processed = tissues_to_process
+        if hasattr(self, 'tissues_diff_expre_processed'):
+            self.tissues_diff_expre_processed.append(tissues_to_process)
+        else:
+            self.tissues_diff_expre_processed = tissues_to_process
         return self.diff_expressed_3D
 
-    def plot_top_interesting_genes(self, tissues_to_process, nb_genes=20,
+    def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
                                    repetition_allowed=False, compute_z_score=True,
                                    fig=None, ax=None):
         from collections import Counter
@@ -1054,8 +1057,8 @@ class Embryo(object):
             print("You asked to plot tissues that were not already processed")
             print("The following tissues will be ignored:")
             for t in tmp_T:
-                print(f"\t - {self.corres_tissue.get(t, f'no name found for tissue #{t}')}")
-        tissues_to_process = list(set(tissues_to_process).union(self.tissues_diff_expre_processed))
+                print(f"\t - {t}")
+        tissues_to_process = list(set(tissues_to_process).intersection(self.tissues_diff_expre_processed))
         genes_of_interest = []
         gene_dict = {}
         tissue_genes = {}
@@ -1100,7 +1103,7 @@ class Embryo(object):
         if compute_z_score:
             z_score = stats.zscore(values, axis=0)
         if ax is None:
-            fig, ax = plt.subplots(figsize=(5,round(1.5*nb_genes)))
+            fig, ax = plt.subplots(figsize=(5,max(5, round(1.5*nb_genes))))
         if fig is None:
             fig = ax.get_figure()
         ax.imshow(z_score, interpolation='nearest', cmap='Reds')
@@ -1109,6 +1112,7 @@ class Embryo(object):
         ax.set_yticks(range(values.shape[0]))
         ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
         fig.tight_layout()
+        return fig, ax
 
     def __init__(self, data_path, tissues_to_ignore=None,
                  corres_tissue=None, tissue_weight=None,
