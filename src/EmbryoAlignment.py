@@ -1,9 +1,14 @@
+#!python
+# This file is subject to the terms and conditions defined in
+# file 'LICENCE', which is part of this source code package.
+# Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
+
 import numpy as np
-import transformations as tr
+import transformations as tr.
 from scipy.spatial import KDTree, Delaunay
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy import stats
 from itertools import combinations
 from matplotlib import pyplot as plt
@@ -15,7 +20,21 @@ import anndata
 import seaborn as sns
 
 class Embryo(object):
+    """
+    Embryo class to handle samples from 3D spatial
+    single cell omics. It was initially designed with
+    a specific dataset in mind but it should work
+    for other kinds of datasets.
+    """
+
     def set_zpos(self, z_space=30.):
+        """
+        Creates the dictionary containing
+        the z position of the different beads
+
+        Args:
+            z_space (float): physical space between pucks
+        """
         self.z_space = z_space
         self.z_pos = {}
         cs_conversion = {b: a*z_space for a, b in enumerate(self.all_cover_slips)}
@@ -23,6 +42,14 @@ class Embryo(object):
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
 
     def read_csv(self, path, xy_resolution=1):
+        """
+        Reads and loads a 3D spatial single cell
+        omics dataset from a csv file.
+
+        Args:
+            path (str): path to the csv file
+            xy_resolution (float): resolution of the xy coordinates
+        """
         with open(path) as f:
             lines = f.readlines()
         cell_id = 0
@@ -50,6 +77,23 @@ class Embryo(object):
                      genes_of_interest=None,
                      tissues_to_ignore=None,
                      store_anndata=False):
+        """
+        Reads and loads a 3D spatial single cell
+        omics dataset from an anndata file.
+
+        Args:
+            path (str): path to the csv file
+            xy_resolution (float): resolution of the xy coordinates
+            genes_of_interest (list of str): list of genes to load
+                genes_of_interest lists the genes that can then be
+                interpolated between slices
+            tissues_to_ignore (list of int): list of tissue ids that
+                will be ignored. The beads that have been assigned these
+                tissue types will not be loaded
+            store_anndata (bool): whether or not to store the anndata
+                matrix. The matrix is necessary when looking for
+                differentially expressed genes
+        """
         from anndata import read
         data = read(path)
         data_kept = set()
@@ -98,6 +142,18 @@ class Embryo(object):
             self.anndata = data
 
     def rigid_transform_2D(self, A, B):
+        """
+        Given to lists of paired positions, computes the rigid
+        transformation that minimizes between the paired positions.
+        Shamefully copied from there:
+        https://github.com/nghiaho12/rigid_transform_3D
+
+        Args:
+            A (2 x n ndarray): list of 2D positions
+            B (2 x n ndarray): list of 2D positions
+        Returns:
+            M (4x4 ndarray): resulting rigid matrix
+        """
         assert A.shape == B.shape
 
         num_rows, num_cols = A.shape
@@ -122,10 +178,6 @@ class Embryo(object):
 
         H = Am @ np.transpose(Bm)
 
-        # sanity check
-        #if linalg.matrix_rank(H) < 3:
-        #    raise ValueError("rank of H = {}, expecting 3".format(linalg.matrix_rank(H)))
-
         # find rotation
         U, S, Vt = np.linalg.svd(H)
         R = Vt.T @ U.T
@@ -143,6 +195,25 @@ class Embryo(object):
         return M
     
     def register(self, pos_ref, pos_flo, apply=False, rigid=False):
+        """
+        Computes and if asked, apply the transformation that minizes the
+        distances between two sets of paired points. The computed transformation
+        is always linear but can be rigid (rotation+translation) or
+        affine (rigid+shearing)
+
+        Args:
+            pos_ref (2 x n ndarray): list of the reference 2D positions
+            pos_flo (2 x n ndarray): list of 2D positions to transform
+            apply (bool): if true, on top of returning the transformation
+                matrix, the function returns the transformed points.
+                Default: False
+            rigid (bool): if true a rigid transformation is computed
+                otherwise an affine function is computed
+        Returns:
+            M (4 x 4 ndarray): resulting rigid matrix
+            new_pos (2 x n ndarray): list of transformed `pos_flo`
+                positions. Only returned if `apply` is `True`
+        """
         if rigid:
             M = self.rigid_transform_2D(pos_flo.T, pos_ref.T)
         else:
@@ -158,6 +229,13 @@ class Embryo(object):
             return(M)
 
     def center_data(self):
+        """
+        Centers the dataset on 0.
+        Stores the result in `self.centered_pos`
+        Returns:
+            (dict, int:[float, float]): a dictionnary that maps beads id to
+                their centered positions
+        """
         self.centered_pos = {}
         for cs, cells in self.cells_from_cover_slip.items():
             pos = np.array([self.pos[c] for c in cells])
@@ -166,6 +244,15 @@ class Embryo(object):
         return(self.centered_pos)
     
     def get_tissue_centers(self):
+        """
+        Computes the center of mass of the different tissues
+        within each puck. Stores the result in `self.tissue_centers`
+        Returns:
+            (dict puck_id:(dict (tissue_id, tissue_weight): float)):
+                dictionary that maps a puck id to another dictionary.
+                The second dictionary maps a tissue id and its weight
+                to the center of mass of the tissue in that puck
+        """
         self.tissue_centers = {}
         for cs, cells in self.cells_from_cover_slip.items():
             self.tissue_centers[cs] = {}
@@ -176,14 +263,14 @@ class Embryo(object):
             for tissue, c_tissue in tissues.items():
                 if len(c_tissue)>2:
                     pos = [self.centered_pos[ci] for ci in c_tissue]
-                    # hull = ConvexHull(pos)
-                    # self.tissue_centers[cs][tissue] = np.mean(hull.points[hull.vertices], axis=0)
-                    # self.tissue_centers[cs][tissue] = np.median(pos, axis=0)
                     for w in range(self.tissue_weight.get(tissue, 1)):
                         self.tissue_centers[cs][(tissue, w)] = np.mean(pos, axis=0)
         return(self.tissue_centers)
     
     def build_and_apply_trsf_matrix(self, cs_ref, cs_flo):
+        """
+
+        """
         # getting the shared tissue between the consecutive coverslips
         tissues_ref = set(self.tissue_centers[cs_ref].keys())
         tissues_flo = set(self.tissue_centers[cs_flo].keys())
@@ -272,7 +359,6 @@ class Embryo(object):
                     self.pairing.update(zip(cells_cs1[pairing[0][to_keep]], cells_cs2[pairing[1][to_keep]]))
         return pos_ref, pos_flo
 
-
     def register_cs(self, cs1, cs2, refine=False, rigid=False, final=False, th_d=None):
         if not hasattr(self, 'registered_pos'):
             self.register_with_tissues()
@@ -282,7 +368,6 @@ class Embryo(object):
             self.pairing = {}
         if not hasattr(self, 'final') and final:
             self.final = {c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs1]}
-        # pos_ref, pos_flo = self.build_pairing(cs1, cs2, rebuild=True, refine=refine, th_d=th_d)
         pos_ref, pos_flo = self.build_pairing(cs1, cs2, rebuild=False, refine=refine, th_d=th_d)
         M = self.register(np.array(pos_ref), np.array(pos_flo), apply=False, rigid=rigid)
         cells_cs1 = self.cells_from_cover_slip[cs1]
@@ -299,11 +384,6 @@ class Embryo(object):
         if final:
             self.final.update(zip(cells_cs2, new_pos))
         return M
-
-    def transfer_cells(self, cs1, cs2):
-        if not hasattr(self, 'final'):
-            self.register_cs(cs1, cs2, rigid=True, final=True)
-        not_paired = self.cells_from_cover_slip[cs1].difference(self.pairing)
         
     def build_gabriel_graph(self, node_ids, pos):
         tmp = Delaunay(pos)
@@ -329,105 +409,6 @@ class Embryo(object):
             final_GG[node_ids[e1]] = set([node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]])
         return final_GG
 
-    def get_KDTree_GG(self, cs, source):
-        if not hasattr(self, 'cells_paired_cs'):
-            self.cells_paired_cs = {}
-        if not hasattr(self, 'cells_not_paired_cs'):
-            self.cells_not_paired_cs = {}
-        if not hasattr(self, 'pos_paired_cs'):
-            self.pos_paired_cs = {}
-        if not hasattr(self, 'pos_not_paired_cs'):
-            self.pos_not_paired_cs = {}
-        if not hasattr(self, 'kdt_cs'):
-            self.kdt_cs = {}
-        if not hasattr(self, 'GG_cs'):
-            self.GG_cs = {}
-        if source==cs:
-            cells_not_paired_cs = self.cells_from_cover_slip[cs].difference(self.pairing.keys())
-        else:
-            cells_not_paired_cs = self.cells_from_cover_slip[cs].difference(self.pairing.values())        
-        cells_paired_cs = list(self.cells_from_cover_slip[cs].difference(cells_not_paired_cs))
-        cells_not_paired_cs = list(cells_not_paired_cs)
-        pos_not_paired_cs = [self.final[c] for c in cells_not_paired_cs]
-        pos_paired_cs = np.array([self.final[c] for c in cells_paired_cs])
-        kdt_cs = KDTree(pos_paired_cs)
-        all_cells = list(self.cells_from_cover_slip[cs])
-        GG_cs = self.build_gabriel_graph(all_cells, [self.final[c] for c in all_cells])
-        self.cells_paired_cs[cs] = cells_paired_cs
-        self.cells_not_paired_cs[cs] = cells_not_paired_cs
-        self.pos_paired_cs[cs] = pos_paired_cs
-        self.pos_not_paired_cs[cs] = pos_not_paired_cs
-        self.kdt_cs[cs] = kdt_cs
-        self.GG_cs[cs] = GG_cs
-
-
-    def build_trajectories(self, cs, source, disapear_bounds=None):
-        if not hasattr(self, 'trajectories'):
-            self.trajectories = {}
-        if disapear_bounds is None:
-            disapear_bounds = (.1, .5, .9)
-        
-        nb_genes = len(self.all_genes)
-        trajectories = {}
-        gene_traj = {}
-        if source==cs:
-            cells = list(self.cells_paired_cs[cs])
-            pairs = [(c, self.pairing[c]) for c in cells]
-            to_map = lambda pair: list(map(interp1d, [[0, 1],]*nb_genes, zip(*self.data[pair, genes].X)))
-            gene_traj = dict(zip(cells, map(to_map, pairs)))
-            for c in self.cells_paired_cs[cs]:
-                start_x, start_y = self.final[c]
-                end_x, end_y = self.final[self.pairing[c]]
-                interp_x = interp1d([0, 1], [start_x, end_x])
-                interp_y = interp1d([0, 1], [start_y, end_y])
-                trajectories[c] = interp_x, interp_y
-        start, mid, end = disapear_bounds
-        d_to_closest = {}
-        arrival = {}
-        gene_arrival = {}
-        if source==cs:
-            pairing_to_use = self.pairing
-        else:
-            pairing_to_use = {v: k for k, v in self.pairing.items()}
-        for c in self.cells_not_paired_cs[cs]:
-            neighbs = self.GG_cs[cs].get(c).difference(self.cells_not_paired_cs[cs])
-            if len(neighbs)<1:
-                neighbs = [self.cells_paired_cs[cs][self.kdt_cs[cs].query(self.final[c], 1)[1]]]
-            arrival[c] = np.mean([self.final[pairing_to_use[ni]] for ni in neighbs], axis=0)
-            d_to_closest[c] = np.mean([np.linalg.norm(self.final[c] - self.final[ni]) for ni in neighbs])
-        d_to_closest_vals = list(d_to_closest.values())
-        med_to_closest = np.median(d_to_closest_vals)
-        min_to_closest = np.min(d_to_closest_vals)
-        max_to_closest = np.max(d_to_closest_vals)
-        if source==cs:
-            dist_to_disapear = interp1d([max_to_closest, med_to_closest, min_to_closest],
-                                        [start, mid, end])
-        else:
-            dist_to_disapear = interp1d([min_to_closest, med_to_closest, max_to_closest],
-                                        [start, mid, end])
-        for c in self.cells_not_paired_cs[cs]:
-            start_x, start_y = self.final[c]
-            end_x, end_y = arrival[c]
-            D = dist_to_disapear(d_to_closest[c])
-            if source==cs:
-                interp_x = interp1d([0, D], [start_x, end_x], bounds_error=False)
-                interp_y = interp1d([0, D], [start_y, end_y], bounds_error=False)
-            else:
-                interp_x = interp1d([1, D], [start_x, end_x], bounds_error=False)
-                interp_y = interp1d([1, D], [start_y, end_y], bounds_error=False)
-            trajectories[c] = interp_x, interp_y
-        if source in self.trajectories:
-            self.trajectories[source].update(trajectories)
-        else:
-            self.trajectories[source] = trajectories
-        
-    def get_new_positions(self, P, cs):
-        pos_tmp = {c: np.array([self.trajectories[cs][c][0](P), self.trajectories[cs][c][1](P)])
-                   for c in self.trajectories[cs]}
-        cells = [c for c in pos_tmp if not np.isnan(pos_tmp[c][0])]
-        pos = np.array([pos_tmp[c] for c in cells])
-        return cells, pos
-        
     def plot_coverslip(self, cs, pos='pos', ax=None,
                        tissues_to_plot=None, legend=False,
                        color=None, cells=None, **kwargs):
@@ -460,7 +441,7 @@ class Embryo(object):
             ax.legend(handles=scatter.legend_elements()[0], labels=np.unique(tissues))
         return fig, ax
 
-    def removing_spatial_outliers(self, th=.2):
+    def removing_spatial_outliers(self, th=.2, n_components=3):
         from sklearn import mixture
         self.filtered_cells = set()
         for t in self.all_tissues:
@@ -480,7 +461,7 @@ class Embryo(object):
             cells_final = np.array(cells_final)
 
             D = np.array([d for c, d in c_to_d.items()])
-            gmm = mixture.GaussianMixture(n_components=3, max_iter=1000,
+            gmm = mixture.GaussianMixture(n_components=n_components, max_iter=1000,
                                           covariance_type='full').fit(D.reshape(-1,1))
             order = np.argsort(gmm.means_, axis=0)
             proba0 = gmm.predict_proba(D.reshape(-1, 1))[:, order[0,0]]
