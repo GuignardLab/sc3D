@@ -2,7 +2,7 @@
 
 scSpatial is a Python library to handle 3D spatial transcriptomic datasets.
 
-It is based on the [anndata]([anndata - Annotated Data &mdash; anndata 0.7.9.dev5+g62089e2 documentation](https://anndata.readthedocs.io/en/latest/))/[Scanpy]([Scanpy – Single-Cell Analysis in Python &mdash; Scanpy 1.8.2 documentation](https://scanpy.readthedocs.io/en/stable/)) libraries and allows to read, register pucks and compute 3D differential expression.
+It is based on the [anndata](https://anndata.readthedocs.io/en/latest/)/[Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register pucks and compute 3D differential expression.
 
 ## Description of the repository
 
