@@ -3,21 +3,26 @@
 # file 'LICENCE', which is part of this source code package.
 # Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 
+from collections import Counter
+from itertools import combinations
+
 import numpy as np
-import transformations as tr.
+from matplotlib import pyplot as plt
+import pandas as pd
+
 from scipy.spatial import KDTree, Delaunay
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy import stats
-from itertools import combinations
-from matplotlib import pyplot as plt
-from itertools import combinations
-from sklearn.decomposition import PCA
-import open3d as o3d
-import pandas as pd
-import anndata
 import seaborn as sns
+
+from sklearn.decomposition import PCA
+from sklearn import linear_model
+
+import open3d as o3d
+import anndata
+import transformations as tr
 
 class Embryo(object):
     """
@@ -269,7 +274,12 @@ class Embryo(object):
     
     def build_and_apply_trsf_matrix(self, cs_ref, cs_flo):
         """
+        Prepare the data, compute and apply the transformation that
+        matches two pucks.
 
+        Args:
+            cs_ref (int): id of the reference puck
+            cs_flo (int): if of the floating puck (that will be transformed)
         """
         # getting the shared tissue between the consecutive coverslips
         tissues_ref = set(self.tissue_centers[cs_ref].keys())
@@ -298,6 +308,9 @@ class Embryo(object):
         self.tissue_centers_reg[cs_flo] = dict(zip(self.tissue_centers[cs_flo], new_pos))
 
     def register_with_tissues(self):
+        """
+        Register together all the pucks using tissue center of masses.
+        """
         if not hasattr(self, 'centered_pos'):
             self.center_data()
         if not hasattr(self, 'tissue_centers'):
@@ -311,6 +324,29 @@ class Embryo(object):
             cs_ref = cs_flo
 
     def build_pairing(self, cs1, cs2, rebuild=False, refine=False, th_d=None):
+        """
+        Build the pairing between beads from two pucks and stores it in the
+        dictionary `pairing` that maps a bead id to the id of its paired bead.
+
+        Args:
+            cs1 (int): id of the first puck
+            cs2 (int): id of the second puck
+            rebuild (bool): if true the previously computed pairings are erased
+                Default: False (you should probably keep it that way)
+            refine (bool): if true, uses the previously computed registration to
+                do the pairing (usually kept at False).
+                Default: False
+            th_d (bool | float): threshold above which a pairing is discarded.
+                If th_d is a boolean, then the threshold is the median of the
+                distribution of all the distances. If th_d is a float the value
+                given is used as a threshold.
+                Usually used as a float.
+        Returns:
+            pos_ref (2 x n ndarray): list of positions that have been paired from
+                the first puck (`cs1`)
+            pos_flo (2 x n ndarray): list of positions that have been paired from
+                the second puck (`cs2`)
+        """
         if rebuild:
             self.pairing = {}
         pos_ref = []
@@ -360,6 +396,27 @@ class Embryo(object):
         return pos_ref, pos_flo
 
     def register_cs(self, cs1, cs2, refine=False, rigid=False, final=False, th_d=None):
+        """
+        Registers the puck `cs2` onto the puck `cs1`.
+
+        Args:
+            cs1 (int): id of the first puck
+            cs2 (int): id of the second puck
+            refine (bool): if true, uses the previously computed registration to
+                do the pairing (usually kept at False).
+                Default: False
+            rebuild (bool): if true the previously computed pairings are erased
+                Default: False (you should probably keep it that way)
+            final (bool): if True assumes that it is the final registration between
+                the two considered pucks (legacy, always True now).
+                Default: True
+            th_d (bool | float): threshold above which a pairing is discarded.
+                If th_d is a boolean, then the threshold is the median of the
+                distribution of all the distances. If th_d is a float the value
+                given is used as a threshold.
+                Usually used as a float.
+
+        """
         if not hasattr(self, 'registered_pos'):
             self.register_with_tissues()
         if not hasattr(self, 'pos_reg_aff'):
@@ -386,6 +443,19 @@ class Embryo(object):
         return M
         
     def build_gabriel_graph(self, node_ids, pos):
+        """
+        Build the gabriel graph of a set of nodes with
+        associtated positions.
+
+        Args:
+            node_ids ([int, ] (size n)): list of node ids
+            pos (n x m ndarray): ndarray of the positions where n is
+                the number of nodes and m is the spatial dimension
+        Returns:
+            final_GG (dict id: set([ids, ])): the gabriel graph as
+                an adjacency list, a dictionary that maps node ids
+                to the list of neighboring node ids
+        """
         tmp = Delaunay(pos)
         delaunay_graph = {}
 
@@ -412,6 +482,31 @@ class Embryo(object):
     def plot_coverslip(self, cs, pos='pos', ax=None,
                        tissues_to_plot=None, legend=False,
                        color=None, cells=None, **kwargs):
+        """
+        Plot a puck
+
+        Args:
+            cs (int): id of the puck to plot
+            pos (str): attribute defining the positions to plot.
+                Probably want to use 'final' since it is the registered
+                positions. Despite that, default is 'pos', the original
+                positions
+            ax (matplotlib.AxesSubplot): can be provided to constrain the
+                plot
+            tissues_to_plot ([t_id, ]): list of tissue ids to plot
+            legend (bool): if True a legend is ploted.
+                Default: False
+            color (dict t_id: [float, float, float]): a dictionary that
+                maps a tissue id to a given color. If `None`, then the default
+                matplotlib colors are used.
+                Default: None
+            cells ([id, ]): list of bead ids to plot. If `cells` is provided
+                `tissues_to_plot` and `cs` are ignored
+            kwargs : the kwargs are passed down to the matplotlib.scatterplot call
+        Returns:
+            fig (matplotlib.Figure): the created figure
+            ax (matplotlib.AxesSubplot): the working axis
+        """
         if ax is None:
             fig, ax = plt.subplots()
         else:
@@ -442,6 +537,17 @@ class Embryo(object):
         return fig, ax
 
     def removing_spatial_outliers(self, th=.2, n_components=3):
+        """
+        Removes spatial outliers given a threshold and a number of components
+
+        Args:
+            th (float): Likelyhood below which a bead is discarded.
+                Default: 0.2
+            n_components (int): number of components for the gaussian mixture
+                model.
+                Default: 3 (probably should keep it that way. Lesser than 2 will
+                            crash things)
+        """
         from sklearn import mixture
         self.filtered_cells = set()
         for t in self.all_tissues:
@@ -482,6 +588,23 @@ class Embryo(object):
     def reconstruct_intermediate(self, rigid=True,
                                  th_d=True, cs=None,
                                  multicore=True, genes=None):
+        """
+        Register all pucks against each other and build the interpolation splines
+
+        Args:
+            rigid (bool): if True, a rigid transformation is computed and applied.
+                Otherwise it is an affine transformation.
+                Default: True
+            th_d (bool | float): threshold above which a pairing is discarded.
+                If th_d is a boolean, then the threshold is the median of the
+                distribution of all the distances. If th_d is a float the value
+                given is used as a threshold. Usually used as a float.
+            cs ([p_id, ]): list of puck ids to treat. If None, then all the pucks
+                are treated.
+                Default: None
+            multicore (bool): useless at the time being. Maybe one day ...
+            genes ([str, ]): gene names that will be interpolated
+        """
         if not hasattr(self, 'z_pos'):
             self.set_zpos()
         disapear_bounds = (.1, .5, .9)
@@ -623,6 +746,42 @@ class Embryo(object):
                    nb_interp=5, output_path=None, gene=None,
                    min_g1=None, min_g2=None, max_g1=None, max_g2=None,
                    main_bi_color='g', figsize=(5, 5), path_scale=None, **kwargs):
+        """
+        Plot an arbitrarly oriented slice according to an angle a direction and an origin.
+
+        Args:
+            angle (float): angle of the rotation of the slice
+            color_map (matplotlib.cmap): color map that will be applied
+            rot_origin ([int, int, int]): 3D vector of the normal of the
+                rotation plan. If [0, 0, 1] is given the rotation will be
+                around the z axis
+            origin ([int, int, int]): coordinates of center of the rotation
+            thickness (float): thickness of the slice
+            tissues ([t_id, ]): list of tissue ids to plot
+            angle_unit (str): if `'degree'` the angle is treated as degrees.
+                Otherwise it is treated a radii
+            nb_interp (int): number of pucks to interpolate in between
+                existing pucks
+            output_path (str): path to the output figure
+            gene (str | [str, str]): gene name to interpolate. If a list
+                of 2 strings is given gene colocalization is plotted
+            min_g1/g2 (float): minimum threshold value for the first and
+                second genes when colocalization. If `None`, the 2nd
+                percentile of the gene expression is used as a threshold
+            max_g1/g2 (float): maximum threshold value for the first and
+                second genes when colocalization. If `None`, the 98th
+                percentile of the gene expression is used as a threshold
+            main_bi_color ('g' | 'r' | 'b'): when colocalization, two
+                colors are used green and red+blue ('g'), etc
+            figsize (float, float): width and height of the figure given
+                to the function plt.figure
+            path_scale (str): path to the figure that will contain the
+                scale for colocalization figures
+            kwargs : the keyword args are forwarded to the scatterplot function
+        Returns:
+            points_to_plot (n x 2 ndarray): list of the positions of the points
+                that have been plotted
+        """
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -723,6 +882,28 @@ class Embryo(object):
                   origin=[0, 0, 0], thickness=30, tissues=None,
                   tissues_colored=None, angle_unit='degree',
                   gene=None, nb_interp=5):
+        """
+        Build a ply file containing a slice
+
+        Args:
+            file_name (str): path to the output ply file
+            angle (float): angle of the rotation of the slice
+            color_map (matplotlib.cmap): color map that will be applied
+            rot_origin ([int, int, int]): 3D vector of the normal of the
+                rotation plan. If [0, 0, 1] is given the rotation will be
+                around the z axis
+            origin ([int, int, int]): coordinates of center of the rotation
+            thickness (float): thickness of the slice
+            tissues ([t_id, ]): list of tissue ids to plot
+            angle_unit (str): if `'degree'` the angle is treated as degrees.
+                Otherwise it is treated a radii
+            nb_interp (int): number of pucks to interpolate in between
+                existing pucks
+            gene (str): gene name to interpolate
+        Returns:
+            points_to_plot (n x 2 ndarray): list of the positions of the points
+                that have been plotted
+        """
         if tissues is None:
             tissues = self.all_tissues
         if tissues_colored is None:
@@ -763,6 +944,29 @@ class Embryo(object):
     def anndata_slice(self, file_name, angle, gene_list, rot_orig=[0, 0, 1],
                       origin=[0, 0, 0], thickness=30, tissues=None,
                       angle_unit='degree', nb_interp=5):
+        """
+        Build a anndata file containing a slice
+
+        Args:
+            file_name (str): path to the output ply file
+            angle (float): angle of the rotation of the slice
+            color_map (matplotlib.cmap): color map that will be applied
+            rot_origin ([int, int, int]): 3D vector of the normal of the
+                rotation plan. If [0, 0, 1] is given the rotation will be
+                around the z axis
+            origin ([int, int, int]): coordinates of center of the rotation
+            thickness (float): thickness of the slice
+            tissues ([t_id, ]): list of tissue ids to plot
+            angle_unit (str): if `'degree'` the angle is treated as degrees.
+                Otherwise it is treated a radii
+            nb_interp (int): number of pucks to interpolate in between
+                existing pucks
+            gene_list ([str, ]): list of the gene names to interpolate
+                (only selected genes can be inputed)
+        Returns:
+            points_to_plot (n x 2 ndarray): list of the positions of the points
+                that have been plotted
+        """
         if tissues is None:
             tissues = self.all_tissues
         if angle_unit == 'degree':
@@ -793,6 +997,29 @@ class Embryo(object):
 
     def anndata_no_extra(self, file_name, angle, rot_orig=[0, 0, 1],
                          origin=[0, 0, 0], thickness=30, angle_unit='degree'):
+        """
+        Build a anndata file containing a slice without doing interpolation
+        but any gene can be requested
+
+        Args:
+            file_name (str): path to the output ply file
+            angle (float): angle of the rotation of the slice
+            color_map (matplotlib.cmap): color map that will be applied
+            rot_origin ([int, int, int]): 3D vector of the normal of the
+                rotation plan. If [0, 0, 1] is given the rotation will be
+                around the z axis
+            origin ([int, int, int]): coordinates of center of the rotation
+            thickness (float): thickness of the slice
+            tissues ([t_id, ]): list of tissue ids to plot
+            angle_unit (str): if `'degree'` the angle is treated as degrees.
+                Otherwise it is treated a radii
+            nb_interp (int): number of pucks to interpolate in between
+                existing pucks
+            gene_list ([str, ]): list of the gene names to interpolate
+        Returns:
+            points_to_plot (n x 2 ndarray): list of the positions of the points
+                that have been plotted
+        """
         if angle_unit == 'degree':
             angle = np.deg2rad(angle)
         x_angle, y_angle, z_angle = angle
@@ -816,6 +1043,31 @@ class Embryo(object):
 
     def produce_em(self, nb_intra=5, tissues_to_plot=None,
                    gene=None, gene_list=None):
+        """
+        Interpolates beads from the previously computed splines and returns
+        the list of the interpolated positions together with a list of values
+        for each position corresponding either to the tissue id of the position
+        or to the gene expression value if a gene name is provided.
+
+        Args:
+            nb_intra (int): number of interpolated slices to add between
+                real slices
+            tissues_to_plot ([t_id, ]): list of tissue ids to interpolate
+                if `None` all tissues are interpolated
+            gene (str): name of a gene to output its interpolated value
+                for each bead
+            gene_list ([str, ]): list of gene names to interpolate. If
+                a gene list is given, the list gene_expr is returned.
+                The list contains list of gene expressions for the interpolated
+                beads. Only pre-selected genes can be inputed
+        Returns:
+            points (n x 3 ndarray): ndarray containing `n` bead positions
+            colors (ndarray of length n): list of bead values. Tissue id
+                by default gene expression value if `gene` is not `None`.
+            gene_expr (`len(gene_list)` x n ndarray): array of `colors` like
+                arrays containing gene expression of the genes queried in
+                `gene_list`
+        """
         old_spacing = sorted(set(self.z_pos.values()))
         new_spacing = np.linspace(min(old_spacing), max(old_spacing),
                                   len(old_spacing)+(len(old_spacing)-1)*nb_intra)
@@ -848,6 +1100,10 @@ class Embryo(object):
                                          nb_bins=5,
                                          th_expr=.5,
                                          exclusion_func=None):
+        """
+        Compute some differential gene expression along the main axis
+        of a given tissue. Deprecated
+        """
         pca = PCA(n_components=3)
         if exclusion_func is not None:
             cells = np.array([c for c in self.all_cells if self.tissue[c]==t if self.final[c][0]<0])
@@ -929,7 +1185,13 @@ class Embryo(object):
         return threshold
 
     def compute_expr_thresholds(self):
-        # data = self.anndata.copy().X
+        """
+        Compute the expression threshold for all genes
+
+        Returns:
+            th ([float, ] ndarray): list of thresholds for each genes
+                following the same order as the gene order in `self.anndata`
+        """
         out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
         for o in out:
@@ -938,17 +1200,48 @@ class Embryo(object):
         return th
 
     def neighbs(self, gene, sub_data, cells):
+        """
+        Compute the average number of positive neighbors for the positive cells
+        within a given tissue, given a gene
+
+        Args:
+            gene (int): gene id (position in the `self.anndata` array)
+            sub_data (ndarray): sliced version of `self.anndata` only containing
+                the beads corresponding to the tissue to analyse
+            cells (ndarray): ids of the cells in `Embryo` ordered similarly to
+                the `self.anndata` array (to do correspondancy)
+        Returns:
+            avg_nb_neighbs (float): average number of positive neighbors per
+                positive cells
+        """
+
+        # Position of positive cells in `self.anndata`
         positive_cells = np.where(self.gene_expr_th[gene]<sub_data[:,gene])[0]
+
+        # Ids of positive cells
         positive_cells = cells[positive_cells]
+
         nb_neighbs = []
         for p in positive_cells:
             nb_neighbs.append(len([n for n in self.full_GG[p] if n in positive_cells]))
         avg_nb_neighbs = np.mean(nb_neighbs)
         return avg_nb_neighbs
 
-    def cell_groups(self, t, th_vol=.1):
-        from sklearn import linear_model
+    def cell_groups(self, t, th_vol=.025):
+        """
+        Compute the local expression metric for each gene in a given tissue `t`
 
+        Args:
+            t (int): tissue id to process
+            th_vol (float 0<th_vol<1): high and low volume threshold.
+                Any gene expression that covers more that 1-th_vol
+                fraction of the tissue volume or less that th_vol fraction
+                of the tissue volume is discarded.
+        Returns:
+            data_plot (pandas.DataFrame): pandas DataFrame containing most
+                of the computed information for gene localization of the tissue
+                `t`. The main value is in the column `Distance_to_reg`
+        """
         data = self.anndata.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
@@ -1003,6 +1296,22 @@ class Embryo(object):
         return data_plot
 
     def get_3D_differential_expression(self, tissues_to_process, th_vol=.025):
+        """
+        Compute the 3D spatial differential expression for a list of tissues and
+        stores it in `self.diff_expressed_3D`.
+
+        Args:
+            tissues_to_process ([t_ids, ]): list of tissue ids to process
+            th_vol (float 0<th_vol<1): high and low volume threshold.
+                Any gene expression that covers more that 1-th_vol
+                fraction of the tissue volume or less that th_vol fraction
+                of the tissue volume is discarded.
+        Returns:
+            self.diff_expressed_3D (dict t_id: pandas.DataFrame):
+                dictionary that maps a tissue to a pandas DataFrame containing
+                most of the computed information for gene localization of
+                the tissue `t_id`. The main value is in the column `Distance_to_reg`
+        """
         cells = list(self.all_cells)
         pos_3D = [np.array(list(self.final[c])+[self.z_pos[c]]) for c in cells]
 
@@ -1034,7 +1343,31 @@ class Embryo(object):
     def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
                                    repetition_allowed=False, compute_z_score=True,
                                    fig=None, ax=None, output_path=None):
-        from collections import Counter
+        """
+        Plot the top `nb_genes` genes for 3D differentially expressed genes for a
+        list of tissues.
+
+        Args:
+            tissues_to_process ([t_ids, ]): list of tissue ids to process
+            nb_genes (int): number of genes in the top gene list
+            repetition_allowed (bool): if true, a gene can be in the top
+                `nb_genes` of multiple tissues. Otherwise it is only kept
+                for the tissue it has the highest localization score.
+                Default: False
+            compute_z_score (bool): if true, the z-score of gene expression is computed
+                for each gene independently, otherwise the initial value from `self.anndata`
+                is kept
+                Default: True
+            fig (matplotlib.Figure): figure onto which ploting the output. If fig
+                is given ax should be given too. If None, a new figure is created
+                or recovered from ax.
+                Default: None
+            ax (matplotlib.AxesSubplot): the working figure axis
+                Default: None
+            output_path (str): path to the desired output figure. If None, the figure
+                is not saved
+                Default: None
+        """
         tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
         if len(tmp_T) != 0:
             print("You asked to plot tissue(s) that were not already processed")
@@ -1100,8 +1433,27 @@ class Embryo(object):
         return fig, ax
 
     def plot_volume_vs_neighbs(self, t, print_top=None,
-                                   print_genes=None, fig=None, ax=None,
-                                   output_path=None, **kwargs):
+                               print_genes=None, fig=None, ax=None,
+                               output_path=None, **kwargs):
+        """
+        Plot volume of expressing cells versus the average number of expressing neighbors
+        for a given tissue.
+
+        Args:
+            t (int): tissue id to treat
+            print_top (int): number of gene names to plot onto the figure (slows down)
+                the function significantly
+            fig (matplotlib.Figure): figure onto which ploting the output. If fig
+                is given ax should be given too. If None, a new figure is created
+                or recovered from ax.
+                Default: None
+            ax (matplotlib.AxesSubplot): the working figure axis
+                Default: None
+            output_path (str): path to the desired output figure. If None, the figure
+                is not saved
+                Default: None
+            kwargs are forwarded to the seaborn.scatterplot
+        """
         data_plot = self.diff_expressed_3D[t]
         if ax is None:
             fig, ax = plt.subplots(figsize=(10, 8))
@@ -1135,6 +1487,17 @@ class Embryo(object):
             fig.savefig(output_path)
 
     def print_diff_expr_genes(self, tissue, nb):
+        """
+        Extract from the DataFrame `self.diff_expressed_3D`
+        the genes that are locally expressed for a given tissue
+
+        Args:
+            tissue (int): id of the tissue to look at
+            nb (int): number of genes to extract
+        Returns
+            order (`nb` x m pandas.DataFrame): DataFrame containing
+                the top `nb` localized genes.
+        """
         data_plot = self.diff_expressed_3D[tissue]
         gene_values = []
         order = data_plot.sort_values('Distance_to_reg', ascending=False)[:nb]
@@ -1145,6 +1508,30 @@ class Embryo(object):
                  xy_resolution=1, genes_of_interest=None,
                  nb_CS_begin_ignore=0, nb_CS_end_ignore=0,
                  store_anndata=False):
+        """
+        Initialize an spatial single cell embryo
+
+        Args:
+            data_path (str): path to the file containing the sc data (h5ad format)
+            tissues_to_ignore ([t_ids, ]): list of tissues to ignore. Beads belonging
+                to these tissues will be discarded
+            corres_tissue ({t_id: str}): dictionary that maps a tissue id to a tissue
+                name
+            tissue_weight ({t_id: int}): dictionary that maps a tissue id to a weight
+                that will be used for the puck registration. The higher the value is
+                the more aligned the tissue will be. The default value is 1
+            xy_resolution (float): resolution in x and y (assumed to be isotrope)
+            gene_of_interest ([str, ]): list of gene names to be selected. For some
+                applications, they will be the only ones that can be processed.
+            nb_CS_begin_ignore (int): number of pucks to ignore at the begining of
+                the stack.
+                Default: 0
+            nb_CS_end_ignore (int): number of pucks to ignore at the end of the stack
+                Default: 0
+            store_anndata (bool): if true the anndata array is stored. Necessary when
+                doing 3D differential expression analysis
+                Default: False
+        """
         self.cells = set()
         self.pos = {}
         self.cover_slip = {}
