@@ -1,6 +1,6 @@
 # scSpatial
 
-scSpatial is a library to handle 3D spatial transcriptomic datasets.
+scSpatial is a Python library to handle 3D spatial transcriptomic datasets.
 
 It is based on the [anndata]([anndata - Annotated Data &mdash; anndata 0.7.9.dev5+g62089e2 documentation](https://anndata.readthedocs.io/en/latest/))/[Scanpy]([Scanpy – Single-Cell Analysis in Python &mdash; Scanpy 1.8.2 documentation](https://scanpy.readthedocs.io/en/stable/)) libraries and allows to read, register pucks and compute 3D differential expression.
 
@@ -25,5 +25,50 @@ It is based on the [anndata]([anndata - Annotated Data &mdash; anndata 0.7.9.dev
 Once installed, the library can be called the following way:
 
 ```python
-from EmbryoAlignment import Embryo
+from scSpatial import Embryo
+```
+
+To import some data:
+
+```python
+# To read the data
+embryo = Embryo('path/to/data.h5ad')
+
+# To remove potential spatial outliers
+embryo.removing_spatial_outliers(th=outlier_threshold)
+
+# To compute the register the pucks and compute the
+# spline interpolations
+embryo.reconstruct_intermediate(embryo, th_d=th_d,
+                                genes=genes_of_interest)
+
+# To compute the 3D differential expression for selected tissues
+tissues_to_process = [5, 10, 12, 18, 21, 24, 30, 31, 33, 34, 39]
+th_vol = .025
+_ = embryo.get_3D_differential_expression(tissues_to_process, th_vol)
+```
+
+Many other functions are available that can be found used in the two provided jupyter notebooks.
+
+## Installation
+
+The current version of scSpatial has only been tested with the Python 3.8  (though it is not working with Python>=3.9 because of the open3d dependency)
+
+We strongly advise to use virtual environments to install this package. For example:
+
+```shell
+conda create -n scSpatial python==3.8
+conda activate scSpatial
+```
+
+Then, the installation can be done either from this repository:
+
+```shell
+pip install .
+```
+
+or directly from pip:
+
+```shell
+pip install scSpatial
 ```

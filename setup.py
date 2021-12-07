@@ -15,7 +15,7 @@ setup(
     name='scSpatial',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
-    version='1.0',
+    version='1.1',
     description='Puck alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
     url='https://github.com/leoguignard/scSpatial',
