@@ -13,11 +13,12 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='scSpatial',
+    author='Leo Guignard',
+    author_email='leo.guignard@univ-amu.fr',
     version='1.0',
     description='Puck alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
     url='https://github.com/leoguignard/scSpatial',
-    author='Leo Guignard',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
