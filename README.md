@@ -73,3 +73,7 @@ or directly from pip:
 ```shell
 pip install -i https://test.pypi.org/simple/ scSpatial --extra-index-url https://pypi.org/simple
 ```
+(will become the following when published)
+```shell
+pip install scSpatial
+```
