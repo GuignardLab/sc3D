@@ -69,6 +69,7 @@ pip install .
 
 or directly from pip:
 
+(temporary until published)
 ```shell
-pip install scSpatial
+pip install -i https://test.pypi.org/simple/ scSpatial --extra-index-url https://pypi.org/simple
 ```
