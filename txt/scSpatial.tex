@@ -105,18 +105,35 @@ Note that the Gabriel graph tessellation is a decimation of the more classical v
 From these paths, positions and gene expressions can be interpolated.
 Here, we interpolated the positions and gene expressions in between arrays as univariate cubic splines. Therefore, it is possible to retrieve the set of beads that live at any given \(z\) position together with the interpolated gene expression (see Fig. \ref{fig:interp} D-E).
 \section{Spatial differential expression}
-\paragraph{}The goal here is to score genes on whether they are locally expressed or not within a given tissue.
-To do so we used the fact that the average connexity of a randomly decimated graph is in average correlated to 
- initial set of points (in our case the beads) and a neighborhood relationship on these points (in our case the Gabriel graph),
-and their positions in space, if some points are randomly removed independently of their positions, the resulting number of remaining points is linearly correlated to the average remaining number of neighbors for each remaining point.
+\paragraph{}The goal here was to score genes on whether they were locally expressed or not within a given tissue.
+To do so, we quantified if the set of genes that are considered expressing are spatially positioned next to each other.
+The metric we decided to use is based on the fact that the average degree of a graph (or network) is related to the average degree of that graph with randomly removed nodes.
+If a graph \(G\) has a density of \(d(G)=k\), then if a fraction \(f\) of nodes are removed randomly, building the new graph \(G'\) , the density of \(G'\)  is \(d(G')\sim k(1-f)\).
+But, if the nodes are not distributed randomly but are rather spatially localised, then the density of the new graph will be higher than the expected value: \(d(G')>k(1-f)\).
 
-In other words, the previous paragraph means that if beads are randomly expressing a given gene in space (as opposed to locally/differentially), the volume of expressing beads is linearly correlated to the average density of expressing beads.
-\paragraph{}We then computed the expression threshold above which a bead is considered expressing.
-The threshold was computed independently for each gene-tissue pair as the value that split the distribution of expression values for each gene within each tissue into two classes. For that we used the Otsu method \citep{Otsu:1979} which splits a distribution into two such that the intra-class variance is minimum (and therefore maximizing the inter-class variance).
-\paragraph{}Having split the beads into two separate classes, the expressing and non-expressing beads, we then compute the volume of expressing beads (number of positive beads) and the average local density (average number of expressing neighbors). These two values are then normalized by the total volume and the average number of neighbors of each bead respectively.
-\paragraph{}We assumed that most genes are either ubiquitously expressing or not expressing at all within a given tissue.
-Their thresholding then results in a random spatial distribution of positive and negative beads laying the ground for computing the linear relationship between volume and density for each given tissue.
-For each gene, the distance to the linear regression is then calculated which is the score for spatially expressed genes.
+\paragraph{}Having the previous paragraph in mind, it means that the more a gene expression will be localised, the further away the density of the graph of expressing beads will be from the expected value of $k(1-f)$
+\paragraph{}In the context of our study, \(G = (V, E)\) is the graph where the vertices are the beads with their spatial positions.
+Then, to build the set of edges \(E\) between the vertices we computed the Gabriel graph on \(V\).
+Finally, the fraction of removed nodes (\(f\)) is the fraction of the total number of beads in which beads are not expressing a given gene.
+\paragraph{}To compute \(f\) we first computed the expression threshold above which a bead is considered expressing.
+The threshold was computed independently for each gene-tissue pair as the value that splits the distribution of expression values for each gene within each tissue into two classes (expressing and not expressing beads).
+For that we used the Otsu method \citep{Otsu:1979} which splits a distribution into two classes such that the intra-class variance is minimum (and therefore maximising the inter-class variance).
+For each gene \(g\), we therefore have computed a threshold \(O_{th}(g)\).
+\paragraph{}Having split the beads in two separate classes, we create the new graph \(G'_{g} = (V'_g, E'_g)\) where \(V'_g=\{v\in V~|~O_{th}(g)<ge(g, v)\}\) with \(ge(g,v)\) is the expression of the gene \(g\) of the vertice (or bead) \(v\).
+The set of edges \(E'_g\) is then the set of edges included in \(E_g\) such that both vertices of the edges in \(E'_g\) are in the set of expressing beads (\(V'_g\)): \(E'_g=\{(v_1, v_2) \in E_g~|~(v_1, v_2)\in {V'}_g^{2}\}\).
+\(G'_g\) is the graph of connections between beads expressing a given gene \(g\).
+\paragraph{}We then computed the densities of \(G_g\) and \(G'_g\) as followed:
+\begin{equation}
+d(G_g)=\frac{2.|E_g|}{|V_g|(|V_g|-1)}.
+\end{equation}
+The fraction of removed nodes is computed as \(f_g=1-\frac{|V'_g|}{|V_g|}\).
+This value can be seen as the ratio of volume expressing a given gene over the total volume.
+We also normalised the values so they are comparable across different genes and tissues, we are therefore looking at \(f_g\) (which is already normalised) and \(d_g=\frac{d(G'_g)}{d(G_g)}\).
+\paragraph{}We can then look at \(d_g\) against \(f_g\) knowing that \(d(G'_g)\sim d(G_g)f_g\) and therefore \(d_g\sim f_g\).
+Because of the potential noise of the dataset, instead of taking the theoretical value, we computed the linear regression between the distributions \(d_g\) and \(f_g\) for each gene within a given tissue.
+Then, for each gene, the distance to the linear regression is calculated which is the score for spatially expressed genes.
+The higher the score, the further the gene is from the expected value, and therefore the further it is from being randomly expressed in space, meaning that it is locally expressed.
+
 \bibliographystyle{apalike}
 \bibliography{references}
 \end{document}
