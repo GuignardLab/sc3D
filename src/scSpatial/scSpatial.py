@@ -1242,7 +1242,7 @@ class Embryo(object):
                 of the computed information for gene localization of the tissue
                 `t`. The main value is in the column `Distance_to_reg`
         """
-        data = self.anndata.copy().X
+        data = self.anndata.raw.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
