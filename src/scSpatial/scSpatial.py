@@ -1184,7 +1184,7 @@ class Embryo(object):
         threshold = bin_centers[:-1][idx]
         return threshold
 
-    def compute_expr_thresholds(self):
+    def compute_expr_thresholds(self, all_genes=True):
         """
         Compute the expression threshold for all genes
 
@@ -1192,7 +1192,10 @@ class Embryo(object):
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        out = map(self.threshold_otsu, self.anndata.X.T)
+        if all_genes:
+            out = map(self.threshold_otsu, self.anndata.raw.todense().T)
+        else:
+            out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
         for o in out:
             th += [o]
@@ -1227,7 +1230,8 @@ class Embryo(object):
         avg_nb_neighbs = np.mean(nb_neighbs)
         return avg_nb_neighbs
 
-    def cell_groups(self, t, th_vol=.025, all_genes=True):
+    def cell_groups(self, t, th_vol=.025,
+                    all_genes=True):
         """
         Compute the local expression metric for each gene in a given tissue `t`
 
@@ -1237,6 +1241,9 @@ class Embryo(object):
                 Any gene expression that covers more that 1-th_vol
                 fraction of the tissue volume or less that th_vol fraction
                 of the tissue volume is discarded.
+            all_genes (bool): True if all the genes should be considered.
+                Otherwise only the previously computed variable genes are
+                considered
         Returns:
             data_plot (pandas.DataFrame): pandas DataFrame containing most
                 of the computed information for gene localization of the tissue
@@ -1298,7 +1305,8 @@ class Embryo(object):
 
         return data_plot
 
-    def get_3D_differential_expression(self, tissues_to_process, th_vol=.025):
+    def get_3D_differential_expression(self, tissues_to_process, th_vol=.025,
+                                       all_genes=True):
         """
         Compute the 3D spatial differential expression for a list of tissues and
         stores it in `self.diff_expressed_3D`.
@@ -1309,6 +1317,9 @@ class Embryo(object):
                 Any gene expression that covers more that 1-th_vol
                 fraction of the tissue volume or less that th_vol fraction
                 of the tissue volume is discarded.
+            all_genes (bool): True if all the genes should be considered.
+                Otherwise only the previously computed variable genes are
+                considered
         Returns:
             self.diff_expressed_3D (dict t_id: pandas.DataFrame):
                 dictionary that maps a tissue to a pandas DataFrame containing
@@ -1322,7 +1333,7 @@ class Embryo(object):
             self.full_GG = self.build_gabriel_graph(cells, pos_3D)
 
         if not hasattr(self, 'gene_expr_th'):
-            self.gene_expr_th = self.compute_expr_thresholds()
+            self.gene_expr_th = self.compute_expr_thresholds(all_genes=all_genes)
 
         if not hasattr(self, 'whole_tissue_nb_N'):
             self.whole_tissue_nb_N = {}
@@ -1335,7 +1346,8 @@ class Embryo(object):
             
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
-                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
+                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol,
+                                                             all_genes=all_genes)
 
         if hasattr(self, 'tissues_diff_expre_processed'):
             self.tissues_diff_expre_processed.extend(tissues_to_process)
