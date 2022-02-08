@@ -1256,7 +1256,7 @@ class Embryo(object):
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
-        sub_data = np.array(data[cells])
+        sub_data = data[cells]
         if all_genes:
             sub_data = np.array(sub_data.todense())
 
