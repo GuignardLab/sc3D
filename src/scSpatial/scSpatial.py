@@ -1193,7 +1193,7 @@ class Embryo(object):
                 following the same order as the gene order in `self.anndata`
         """
         if all_genes:
-            out = map(self.threshold_otsu, self.anndata.raw.todense().T)
+            out = map(self.threshold_otsu, self.anndata.raw.X.todense().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
