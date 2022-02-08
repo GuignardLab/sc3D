@@ -1266,6 +1266,7 @@ class Embryo(object):
 
         # Mask for the list of genes that are expressing enough within the tissue
         mask_expr = (th_vol<sub_volumes)&(sub_volumes<1-th_vol)
+        print(sub_data.shape, sub_volumes.shape, mask_expr.shape)
 
         # List of genes that are expressing enough within the tissue
         interesting_genes = np.where(mask_expr)[0]
