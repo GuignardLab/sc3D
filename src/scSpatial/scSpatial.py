@@ -1227,7 +1227,7 @@ class Embryo(object):
         avg_nb_neighbs = np.mean(nb_neighbs)
         return avg_nb_neighbs
 
-    def cell_groups(self, t, th_vol=.025):
+    def cell_groups(self, t, th_vol=.025, all_genes=True):
         """
         Compute the local expression metric for each gene in a given tissue `t`
 
@@ -1242,7 +1242,10 @@ class Embryo(object):
                 of the computed information for gene localization of the tissue
                 `t`. The main value is in the column `Distance_to_reg`
         """
-        data = self.anndata.raw.copy().X
+        if all_genes:
+            data = self.anndata.raw.X.todense()
+        else:
+            data = self.anndata.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
