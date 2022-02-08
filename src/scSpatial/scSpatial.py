@@ -1360,6 +1360,7 @@ class Embryo(object):
             self.tissues_diff_expre_processed.extend(tissues_to_process)
         else:
             self.tissues_diff_expre_processed = tissues_to_process
+        self.all_genes = all_genes
         return self.diff_expressed_3D
 
     def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
@@ -1448,7 +1449,10 @@ class Embryo(object):
         ax.set_xticks(range(len(tissue_order)))
         ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
         ax.set_yticks(range(values.shape[0]))
-        ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
+        if self.all_genes:
+            ax.set_yticklabels(list(self.anndata.raw[:,genes_of_interest].var_names))
+        else:
+            ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
         fig.tight_layout()
         if output_path is not None:
             fig.savefig(output_path)
