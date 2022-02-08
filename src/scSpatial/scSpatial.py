@@ -1250,13 +1250,15 @@ class Embryo(object):
                 `t`. The main value is in the column `Distance_to_reg`
         """
         if all_genes:
-            data = self.anndata.raw.X.todense()
+            data = self.anndata.raw.X
         else:
             data = self.anndata.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
-        sub_data = data[cells]
+        sub_data = np.array(data[cells])
+        if all_genes:
+            sub_data = np.array(sub_data.todense())
 
         # Occupied volume for the cells of tissue *t*
         volume_total = len(cells)
@@ -1266,7 +1268,6 @@ class Embryo(object):
 
         # Mask for the list of genes that are expressing enough within the tissue
         mask_expr = (th_vol<sub_volumes)&(sub_volumes<1-th_vol)
-        print(sub_data.shape, sub_volumes.shape, mask_expr.shape)
 
         # List of genes that are expressing enough within the tissue
         interesting_genes = np.where(mask_expr)[0]
