@@ -1306,8 +1306,6 @@ class Embryo(object):
             data_plot['Gene names'] = np.array(self.anndata.raw[:,data_plot['Interesting genes']].var_names)
         else:
             data_plot['Gene names'] = np.array(self.anndata[:,data_plot['Interesting genes']].var_names)
-        for k, v in data_plot.items():
-            print(k, len(v))
         data_plot = pd.DataFrame(data_plot)
 
         return data_plot
