@@ -41,7 +41,6 @@ class Embryo:
             z_space (float): physical space between pucks
         """
         self.z_space = z_space
-        self.z_pos = {}
         cs_conversion = {b: a*z_space for a, b in enumerate(self.all_cover_slips)}
         for c in self.all_cells:
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
@@ -240,7 +239,6 @@ class Embryo:
             (dict, int:[float, float]): a dictionnary that maps beads id to
                 their centered positions
         """
-        self.centered_pos = {}
         for cells in self.cells_from_cover_slip.values():
             pos = np.array([self.pos[c] for c in cells])
             avg = np.mean(pos, axis=0)
@@ -257,7 +255,6 @@ class Embryo:
                 The second dictionary maps a tissue id and its weight
                 to the center of mass of the tissue in that puck
         """
-        self.tissue_centers = {}
         for cs, cells in self.cells_from_cover_slip.items():
             self.tissue_centers[cs] = {}
             tissues = {t: cells.intersection(T)
@@ -315,7 +312,6 @@ class Embryo:
         if not hasattr(self, 'tissue_centers'):
             self.get_tissue_centers()
         cs_ref = self.all_cover_slips[0]
-        self.tissue_centers_reg = {}
         self.tissue_centers_reg[cs_ref] = self.tissue_centers[cs_ref]
         self.registered_pos = {c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs_ref]}
         for cs_flo in self.all_cover_slips[1:]:
@@ -417,11 +413,7 @@ class Embryo:
         """
         if not hasattr(self, 'registered_pos'):
             self.register_with_tissues()
-        if not hasattr(self, 'pos_reg_aff'):
-            self.pos_reg_aff = {}
-        if not hasattr(self, 'pairing'):
-            self.pairing = {}
-        if not hasattr(self, 'final') and final:
+        if (self.final is None) and final:
             self.final = {c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs1]}
         pos_ref, pos_flo = self.build_pairing(cs1, cs2, rebuild=False, refine=refine, th_d=th_d)
         M = self.register(np.array(pos_ref), np.array(pos_flo), apply=False, rigid=rigid)
@@ -546,7 +538,6 @@ class Embryo:
                             crash things)
         """
         from sklearn import mixture
-        self.filtered_cells = set()
         for t in self.all_tissues:
             c_to_d = {}
             cells_final = []
@@ -1336,27 +1327,24 @@ class Embryo:
         cells = list(self.all_cells)
         pos_3D = [np.array(list(self.final[c])+[self.z_pos[c]]) for c in cells]
 
-        if not hasattr(self, 'full_GG'):
+        if self.full_GG is None:
             self.full_GG = self.build_gabriel_graph(cells, pos_3D)
 
-        if not hasattr(self, 'gene_expr_th'):
+        if self.gene_expr_th is None:
             self.gene_expr_th = self.compute_expr_thresholds(all_genes=all_genes)
 
-        if not hasattr(self, 'whole_tissue_nb_N'):
+        if self.whole_tissue_nb_N is None:
             self.whole_tissue_nb_N = {}
             for t in self.all_tissues:
                 cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
                 self.whole_tissue_nb_N[t] = np.median([len(self.full_GG[c]) for c in cells])
-
-        if not hasattr(self, 'diff_expressed_3D'):
-            self.diff_expressed_3D = {}
 
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
                 self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol,
                                                              all_genes=all_genes)
 
-        if not hasattr(self, 'tissues_diff_expre_processed'):
+        if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
         else:
             self.tissues_diff_expre_processed.extend(tissues_to_process)
@@ -1570,31 +1558,31 @@ class Embryo:
         self.corres_tissue = {} if corres_tissue is None else corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
         self.z_space = None
-        self.z_pos = None
+        self.z_pos = {}
         self.all_cells = None
         self.cell_names = None
         self.all_genes = None
         self.gene_expression = None
-        self.centered_pos = None
-        self.tissue_centers = None
-        self.tissue_centers_reg = None
+        self.centered_pos = {}
+        self.tissue_centers = {}
+        self.tissue_centers_reg = {}
         self.registered_pos = None
-        self.pairing = None
-        self.pos_reg_aff = None
+        self.pairing = {}
+        self.pos_reg_aff = {}
         self.final = None
-        self.filtered_cells = None
-        self.GG_cs = None
-        self.KDT_cs = None
-        self.KDT_cs_down = None
-        self.paired_cs_down = None
-        self.KDT_cs_up = None
-        self.paired_cs_up = None
+        self.filtered_cells = set()
+        self.GG_cs = {}
+        self.KDT_cs = {}
+        self.KDT_cs_down = {}
+        self.paired_cs_down = {}
+        self.KDT_cs_up = {}
+        self.paired_cs_up = {}
         self.all_trajs = None
         self.all_expr = None
         self.full_GG = None
         self.gene_expr_th = None
         self.whole_tissue_nb_N = None
-        self.diff_expressed_3D = None
+        self.diff_expressed_3D = {}
         self.tissues_diff_expre_processed = None
 
         if data_path.split('.')[-1] == 'h5ad':
