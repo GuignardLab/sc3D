@@ -7,6 +7,7 @@ from collections import Counter
 from itertools import combinations
 
 import numpy as np
+import scipy as sp
 from matplotlib import pyplot as plt
 import pandas as pd
 
@@ -1197,7 +1198,7 @@ class Embryo:
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        if all_genes:
+        if all_genes or sp.sparse.issparse(embryo.anndata.X):
             out = map(self.threshold_otsu, self.anndata.raw.X.todense().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)
