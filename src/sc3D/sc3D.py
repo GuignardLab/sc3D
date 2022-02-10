@@ -413,7 +413,7 @@ class Embryo:
                 Usually used as a float.
 
         """
-        if not hasattr(self, 'registered_pos'):
+        if self.registered_pos is None:
             self.register_with_tissues()
         if (self.final is None) and final:
             self.final = {c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs1]}
@@ -595,7 +595,7 @@ class Embryo:
             multicore (bool): useless at the time being. Maybe one day ...
             genes ([str, ]): gene names that will be interpolated
         """
-        if not hasattr(self, 'z_pos'):
+        if self.z_pos is None::
             self.set_zpos()
         disapear_bounds = (.1, .5, .9)
         if cs is not None:
@@ -1560,7 +1560,7 @@ class Embryo:
         self.corres_tissue = {} if corres_tissue is None else corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
         self.z_space = None
-        self.z_pos = {}
+        self.z_pos = None
         self.all_cells = None
         self.cell_names = None
         self.all_genes = None
