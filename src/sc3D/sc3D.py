@@ -127,10 +127,16 @@ class Embryo:
         if genes_of_interest is None:
             genes_of_interest = []
         elif genes_of_interest == 'all':
-            genes_of_interest = data.var_names
-        self.all_genes = list(genes_of_interest)
+            if 'feature_name' in data.var:
+                genes_of_interest = list(data.var.feature_name)
+            else:
+                genes_of_interest = data.var_names
+        self.all_genes = sorted(genes_of_interest)
         if 0<len(genes_of_interest):
-            self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
+            if 'feature_name' in data.var:
+                self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(all_genes)].X.A)))
+            else:
+                self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
         else:
             self.gene_expression = {id_:[] for id_ in ids}
 
