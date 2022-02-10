@@ -52,6 +52,12 @@ th_vol = .025
 _ = embryo.get_3D_differential_expression(tissues_to_process, th_vol)
 ```
 
+**Note: at the time being, the following conventions are expected:**
+- **the x-y coordinates are stored in `data.obsm['X_spatial']`**
+- **the array number should be stored in `data.obs['orig.ident']` in the format `"{digits}_{array_id:digit}"`**
+- **the tissue type has to be stored in `data.obs['predicted.id']`**
+- **the gene names have to be stored as indices or in `data.var['feature_name']`**
+
 Many other functions are available that can be found used in the two provided jupyter notebooks.
 
 ## Installation
