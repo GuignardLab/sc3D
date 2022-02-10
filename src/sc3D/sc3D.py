@@ -595,7 +595,7 @@ class Embryo:
             multicore (bool): useless at the time being. Maybe one day ...
             genes ([str, ]): gene names that will be interpolated
         """
-        if self.z_pos is None::
+        if self.z_pos is None:
             self.set_zpos()
         disapear_bounds = (.1, .5, .9)
         if cs is not None:
