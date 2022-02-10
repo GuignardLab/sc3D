@@ -308,8 +308,10 @@ class Embryo:
         Register together all the pucks using tissue center of masses.
         """
         if self.centered_pos is None:
+            self.centered_pos = {}
             self.center_data()
         if self.tissue_centers is None:
+            self.tissue_centers = {}
             self.get_tissue_centers()
         cs_ref = self.all_cover_slips[0]
         self.tissue_centers_reg[cs_ref] = self.tissue_centers[cs_ref]
