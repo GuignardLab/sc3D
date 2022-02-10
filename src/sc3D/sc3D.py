@@ -134,7 +134,7 @@ class Embryo:
         self.all_genes = sorted(genes_of_interest)
         if 0<len(genes_of_interest):
             if 'feature_name' in data.var:
-                self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(all_genes)].X.A)))
+                self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(self.all_genes)].X.A)))
             else:
                 self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
         else:
