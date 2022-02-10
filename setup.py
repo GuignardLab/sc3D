@@ -12,20 +12,20 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 # Fields marked as "Optional" may be commented out.
 
 setup(
-    name='scSpatial',
+    name='sc3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
     version='0.1.0',
-    description='Puck alignment and 3D differential expression for 3D sc omics',
+    description='Array alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
-    url='https://github.com/leoguignard/scSpatial',
+    url='https://github.com/leoguignard/sc3D',
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.8',
     ],
-    packages=['scSpatial'],
+    packages=['sc3D'],
     package_dir= { '' : 'src' },
 
     install_requires=['scipy', 'numpy', 'matplotlib', 'pandas',
