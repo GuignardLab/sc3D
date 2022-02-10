@@ -2,6 +2,10 @@
 
 sc3D is a Python library to handle 3D spatial transcriptomic datasets.
 
+This code was developed in the context of the following study:
+
+**Spatial transcriptomic maps of whole mouse embryos reveal principles of neural tube patterning.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
+
 It is based on the [anndata](https://anndata.readthedocs.io/en/latest/)/[Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
 
 ## Description of the repository
@@ -61,6 +65,11 @@ conda create -n sc3D python==3.8
 conda activate sc3D
 ```
 
+If necessary, install `pip`:
+```shell
+conda install pip
+```
+
 Then, the installation can be done either from this repository:
 
 ```shell
@@ -68,12 +77,25 @@ pip install .
 ```
 
 or directly from pip:
-
-(temporary until published)
-```shell
-pip install -i https://test.pypi.org/simple/ sc3D --extra-index-url https://pypi.org/simple
-```
-(will become the following when published)
 ```shell
 pip install sc3D
 ```
+
+## Running the notebooks
+Two example notebooks are provided.
+To run them one wants to first install the jupyter notebook:
+```shell
+conda install jupyter
+```
+or
+```shell
+pip install jupyter
+```
+
+The notebooks can the be started from a terminal in the folder containing the `.ipynb` files with the following command:
+```shell
+juptyer notebook
+```
+The notebooks should be self content.
+
+Note that the test dataset is not included in this repository put can be downloaded from there:
