@@ -41,6 +41,7 @@ class Embryo:
             z_space (float): physical space between pucks
         """
         self.z_space = z_space
+        self.z_pos = {}
         cs_conversion = {b: a*z_space for a, b in enumerate(self.all_cover_slips)}
         for c in self.all_cells:
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
