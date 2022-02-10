@@ -94,7 +94,7 @@ pip install jupyter
 
 The notebooks can the be started from a terminal in the folder containing the `.ipynb` files with the following command:
 ```shell
-juptyer notebook
+jupyter notebook
 ```
 The notebooks should be self content.
 
