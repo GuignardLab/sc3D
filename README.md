@@ -58,6 +58,8 @@ _ = embryo.get_3D_differential_expression(tissues_to_process, th_vol)
 - **the tissue type has to be stored in `data.obs['predicted.id']`**
 - **the gene names have to be stored as indices or in `data.var['feature_name']`**
 
+The dataset used for the project this code is from can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (it is under the name `mouse_embryo_E8.5_merged_data`)
+
 Many other functions are available that can be found used in the two provided jupyter notebooks.
 
 ## Installation
