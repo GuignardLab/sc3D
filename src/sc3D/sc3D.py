@@ -146,7 +146,10 @@ class Embryo:
             self.cells_from_tissue.setdefault(T, set()).add(c)
         self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
         self.all_tissues = set(self.cells_from_tissue)
-        self.data = data.raw[:, genes_of_interest].X.A
+        if 'feature_name' in data.var:
+            data[:, data.var.feature_name.isin(self.all_genes)].X.A
+        else:
+            self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
 
