@@ -24,7 +24,7 @@ import open3d as o3d
 import anndata
 import transformations as tr
 
-class Embryo(object):
+class Embryo:
     """
     Embryo class to handle samples from 3D spatial
     single cell omics. It was initially designed with
@@ -46,7 +46,7 @@ class Embryo(object):
         for c in self.all_cells:
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
 
-    def read_csv(self, path, xy_resolution=1):
+    def read_csv(self, path, xy_resolution=1, encoding=None):
         """
         Reads and loads a 3D spatial single cell
         omics dataset from a csv file.
@@ -55,7 +55,7 @@ class Embryo(object):
             path (str): path to the csv file
             xy_resolution (float): resolution of the xy coordinates
         """
-        with open(path) as f:
+        with open(path, encoding=encoding) as f:
             lines = f.readlines()
         cell_id = 0
         self.all_cover_slips = set()
@@ -65,7 +65,7 @@ class Embryo(object):
             y = eval(y)
             z = int(z.split('_')[-1].replace('"', ''))
             cat = eval(cat)
-            
+
             if not cat in self.tissues_to_ignore:
                 self.pos[cell_id] = np.array([x, y])*xy_resolution
                 self.cover_slip[cell_id] = z
@@ -77,7 +77,7 @@ class Embryo(object):
                 self.all_cover_slips.add(z)
                 cell_id += 1
         self.all_cover_slips = sorted(self.all_cover_slips)
-    
+
     def read_anndata(self, path, xy_resolution=1,
                      genes_of_interest=None,
                      tissues_to_ignore=None,
@@ -111,7 +111,6 @@ class Embryo(object):
             data = data[~(data.obs['orig.ident'].isin(cs_to_remove))]
             data_kept.update(np.where(~(data.obs['orig.ident'].isin(cs_to_remove)))[0])
         data_kept = np.array(list(data_kept))
-        cell_id = 0
         ids = range(len(data))
         self.all_cells = list(ids)
         self.cell_names = dict(zip(ids,
@@ -146,7 +145,8 @@ class Embryo(object):
         if store_anndata:
             self.anndata = data
 
-    def rigid_transform_2D(self, A, B):
+    @staticmethod
+    def rigid_transform_2D(A, B):
         """
         Given to lists of paired positions, computes the rigid
         transformation that minimizes between the paired positions.
@@ -184,7 +184,7 @@ class Embryo(object):
         H = Am @ np.transpose(Bm)
 
         # find rotation
-        U, S, Vt = np.linalg.svd(H)
+        U, _, Vt = np.linalg.svd(H)
         R = Vt.T @ U.T
 
         # special reflection case
@@ -198,7 +198,7 @@ class Embryo(object):
         M[:2, -1:] = t
 
         return M
-    
+
     def register(self, pos_ref, pos_flo, apply=False, rigid=False):
         """
         Computes and if asked, apply the transformation that minizes the
@@ -224,14 +224,13 @@ class Embryo(object):
         else:
             try:
                 M = tr.affine_matrix_from_points(pos_flo.T, pos_ref.T)
-            except Exception as e:
+            except Exception:
                 M = self.rigid_transform_2D(pos_flo.T, pos_ref.T)
         if apply:
             pos = np.pad(pos_flo, ((0, 0), (0, 1)), 'constant', constant_values=1).T
             new_pos = np.dot(M, pos)[:2].T
             return(M, new_pos)
-        else:
-            return(M)
+        return M
 
     def center_data(self):
         """
@@ -242,12 +241,12 @@ class Embryo(object):
                 their centered positions
         """
         self.centered_pos = {}
-        for cs, cells in self.cells_from_cover_slip.items():
+        for cells in self.cells_from_cover_slip.values():
             pos = np.array([self.pos[c] for c in cells])
             avg = np.mean(pos, axis=0)
             self.centered_pos.update(zip(cells, pos-avg))
-        return(self.centered_pos)
-    
+        return self.centered_pos
+
     def get_tissue_centers(self):
         """
         Computes the center of mass of the different tissues
@@ -270,8 +269,8 @@ class Embryo(object):
                     pos = [self.centered_pos[ci] for ci in c_tissue]
                     for w in range(self.tissue_weight.get(tissue, 1)):
                         self.tissue_centers[cs][(tissue, w)] = np.mean(pos, axis=0)
-        return(self.tissue_centers)
-    
+        return self.tissue_centers
+
     def build_and_apply_trsf_matrix(self, cs_ref, cs_flo):
         """
         Prepare the data, compute and apply the transformation that
@@ -292,7 +291,7 @@ class Embryo(object):
         # computing the transformation
         M = self.rigid_transform_2D(pos_flo.T, pos_ref.T)
         # M = self.register(pos_flo, pos_ref)
-        
+
         # preping the floating positions for the trsf
         pos = np.pad([self.centered_pos[ci] for ci in self.cells_from_cover_slip[cs_flo]],
                      ((0, 0), (0, 1)), 'constant', constant_values=1).T
@@ -300,7 +299,7 @@ class Embryo(object):
         new_pos = np.dot(M, pos)[:2].T
         # updating the position dictionary
         self.registered_pos.update(dict(zip(self.cells_from_cover_slip[cs_flo], new_pos)))
-        
+
         # preping the floating tissue centers
         pos = np.pad([self.tissue_centers[cs_flo][t] for t in self.tissue_centers[cs_flo]],
                      ((0, 0), (0, 1)), 'constant', constant_values=1).T
@@ -351,7 +350,6 @@ class Embryo(object):
             self.pairing = {}
         pos_ref = []
         pos_flo = []
-        tot_paired = 0
         for tissue in self.all_tissues:
             cells_cs1 = np.array([c for c in self.cells_from_cover_slip[cs1]
                                   if self.tissue[c] == tissue])
@@ -371,7 +369,7 @@ class Embryo(object):
                 if isinstance(th_d, bool):
                     th_d_tissue = np.max(distance)/2
                     distance[th_d_tissue<distance] = np.inf
-                elif isinstance(th_d, int) or isinstance(th_d, float):
+                elif isinstance(th_d, (int, float)):
                     th_d_tissue = th_d
                     distance[th_d_tissue<distance] = np.inf
                 else:
@@ -381,11 +379,11 @@ class Embryo(object):
                     pos_ref += list(positions_cs1[pairing[0]])
                     pos_flo += list(positions_cs2[pairing[1]])
                     self.pairing.update(zip(cells_cs1[pairing[0]], cells_cs2[pairing[1]]))
-                except:
+                except Exception:
                     pairing = linear_sum_assignment(copy_d)
                     pos_ref_tmp = positions_cs1[pairing[0]]
                     pos_flo_tmp = positions_cs2[pairing[1]]
-                    distance_paired = np.linalg.norm(np.array(pos_ref_tmp)-np.array(pos_flo_tmp), 
+                    distance_paired = np.linalg.norm(np.array(pos_ref_tmp)-np.array(pos_flo_tmp),
                                                      axis=1).reshape(-1, 1)
                     to_keep = (distance_paired<th_d_tissue).reshape(-1)
                     pos_ref_tmp = pos_ref_tmp[to_keep]
@@ -427,9 +425,7 @@ class Embryo(object):
             self.final = {c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs1]}
         pos_ref, pos_flo = self.build_pairing(cs1, cs2, rebuild=False, refine=refine, th_d=th_d)
         M = self.register(np.array(pos_ref), np.array(pos_flo), apply=False, rigid=rigid)
-        cells_cs1 = self.cells_from_cover_slip[cs1]
         cells_cs2 = self.cells_from_cover_slip[cs2]
-        positions_cs1 = np.array([self.registered_pos[c] for c in cells_cs1])
         if refine:
             positions_cs2 = np.array([self.pos_reg_aff[c] for c in cells_cs2])
         else:
@@ -441,8 +437,9 @@ class Embryo(object):
         if final:
             self.final.update(zip(cells_cs2, new_pos))
         return M
-        
-    def build_gabriel_graph(self, node_ids, pos):
+
+    @staticmethod
+    def build_gabriel_graph(node_ids, pos):
         """
         Build the gabriel graph of a set of nodes with
         associtated positions.
@@ -467,8 +464,8 @@ class Embryo(object):
 
         for e1, neighbs in delaunay_graph.items():
             for ni in neighbs:
-                if not any([np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
-                        for i in delaunay_graph[e1].intersection(delaunay_graph[ni])]):
+                if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
+                           for i in neighbs.intersection(delaunay_graph[ni])):
                     Gabriel_graph.setdefault(e1, set()).add(ni)
                     Gabriel_graph.setdefault(ni, set()).add(e1)
 
@@ -476,7 +473,7 @@ class Embryo(object):
         for e1, neighbs in Gabriel_graph.items():
             neighbs = np.array(list(neighbs))
             distances = np.linalg.norm(pos[e1] - [pos[ni] for ni in neighbs], axis=1)
-            final_GG[node_ids[e1]] = set([node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]])
+            final_GG[node_ids[e1]] = {node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]}
         return final_GG
 
     def plot_coverslip(self, cs, pos='pos', ax=None,
@@ -553,7 +550,7 @@ class Embryo(object):
         for t in self.all_tissues:
             c_to_d = {}
             cells_final = []
-            for cs, cells in self.cells_from_cover_slip.items():
+            for cells in self.cells_from_cover_slip.values():
                 cells_t = np.array(list(cells & self.cells_from_tissue[t]))
                 if len(cells_t)<2:
                     continue
@@ -616,15 +613,14 @@ class Embryo(object):
         self.KDT_cs = {}
         for i, cs1 in enumerate(cs_to_treat[:-1]):
             cs2 = cs_to_treat[i+1]
-            M1 = self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
-        for cs in cs_to_treat:
-            cids = list(self.cells_from_cover_slip[cs])
+            self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+        for csi in cs_to_treat:
+            cids = list(self.cells_from_cover_slip[csi])
             pos = [self.final[c] for c in cids]
-            self.GG_cs[cs] = self.build_gabriel_graph(cids, pos)
+            self.GG_cs[csi] = self.build_gabriel_graph(cids, pos)
         paths = []
         inv_pairing = {v:k for k, v in self.pairing.items()}
         roots = set(self.pairing).difference(inv_pairing)
-        all_paired = set(inv_pairing).union(self.pairing)
         for c in roots:
             p = [c]
             while p[-1] in self.pairing:
@@ -639,42 +635,40 @@ class Embryo(object):
 
         self.KDT_cs_down = {}
         self.paired_cs_down = {}
-        for cs in cs_to_treat[1:]:
-            self.paired_cs_down[cs] = (set(self.cells_from_cover_slip[cs]) &
+        for csi in cs_to_treat[1:]:
+            self.paired_cs_down[csi] = (set(self.cells_from_cover_slip[csi]) &
                                          set(inv_pairing))
-            self.paired_cs_down[cs] = np.array(list(self.paired_cs_down[cs]))
-            pos = [self.final[c] for c in self.paired_cs_down[cs]]
-            self.KDT_cs_down[cs] = KDTree(pos)
+            self.paired_cs_down[csi] = np.array(list(self.paired_cs_down[csi]))
+            pos = [self.final[c] for c in self.paired_cs_down[csi]]
+            self.KDT_cs_down[csi] = KDTree(pos)
 
-        succ = {}
         arrival_down = {}
         d_to_closest_down = {}
         for c in unmapped_down:
-            cs = self.cover_slip[c]
-            neighbs = self.GG_cs[cs].get(c).difference(unmapped_down)
+            csi = self.cover_slip[c]
+            neighbs = self.GG_cs[csi].get(c).difference(unmapped_down)
             if len(neighbs)<1:
-                neighbs = [self.paired_cs_down[cs][self.KDT_cs_down[cs].query(self.final[c], 1)[1]]]
+                neighbs = [self.paired_cs_down[csi][self.KDT_cs_down[csi].query(self.final[c], 1)[1]]]
             arrival_down[c] = np.mean([self.final[inv_pairing[ni]] for ni in neighbs], axis=0)
             d_to_closest_down[c] = np.mean([np.linalg.norm(self.final[c] - self.final[ni])
                                             for ni in neighbs])
 
         self.KDT_cs_up = {}
         self.paired_cs_up = {}
-        for cs in cs_to_treat[:-1]:
-            self.paired_cs_up[cs] = (set(self.cells_from_cover_slip[cs]) &
-                                         set(self.pairing))
-            self.paired_cs_up[cs] = np.array(list(self.paired_cs_up[cs]))
-            pos = [self.final[c] for c in self.paired_cs_up[cs]]
-            self.KDT_cs_up[cs] = KDTree(pos)
+        for csi in cs_to_treat[:-1]:
+            self.paired_cs_up[csi] = (set(self.cells_from_cover_slip[csi]) &
+                                      set(self.pairing))
+            self.paired_cs_up[csi] = np.array(list(self.paired_cs_up[csi]))
+            pos = [self.final[c] for c in self.paired_cs_up[csi]]
+            self.KDT_cs_up[csi] = KDTree(pos)
 
-        succ = {}
         arrival_up = {}
         d_to_closest_up = {}
         for c in unmapped_up:
-            cs = self.cover_slip[c]
-            neighbs = self.GG_cs[cs].get(c).difference(unmapped_up)
+            csi = self.cover_slip[c]
+            neighbs = self.GG_cs[csi].get(c).difference(unmapped_up)
             if len(neighbs)<1:
-                neighbs = [self.paired_cs_up[cs][self.KDT_cs_up[cs].query(self.final[c], 1)[1]]]
+                neighbs = [self.paired_cs_up[csi][self.KDT_cs_up[csi].query(self.final[c], 1)[1]]]
             arrival_up[c] = np.mean([self.final[self.pairing[ni]] for ni in neighbs], axis=0)
             d_to_closest_up[c] = np.mean([np.linalg.norm(self.final[c] - self.final[ni])
                                             for ni in neighbs])
@@ -741,7 +735,7 @@ class Embryo(object):
         self.all_trajs = all_trajs
         self.all_expr = all_expr
 
-    def plot_slice(self, angle, color_map=None, rot_orig=[0, 0, 1], origin=[0, 0, 0],
+    def plot_slice(self, angle, color_map=None, rot_orig=None, origin=None,
                    thickness=30, tissues=None, angle_unit='degree',
                    nb_interp=5, output_path=None, gene=None,
                    min_g1=None, min_g2=None, max_g1=None, max_g2=None,
@@ -786,6 +780,10 @@ class Embryo(object):
             tissues = self.all_tissues
         if angle_unit == 'degree':
             angle = np.deg2rad(angle)
+        if rot_orig is None:
+            rot_orig = [0, 0, 1]
+        if origin is None:
+            origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
         rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
         rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
@@ -796,12 +794,12 @@ class Embryo(object):
         if gene is not None and not isinstance(gene, str):
             if len(gene)==1:
                 gene = gene[0]
-                points, color = self.produce_em(nb_interp, tissues, gene=gene)
+                points, color, *_ = self.produce_em(nb_interp, tissues, gene=gene)
                 color = np.array(color)
-            else:    
+            else:
                 colors = []
                 for g in gene:
-                    points, color = self.produce_em(nb_interp, tissues, gene=g)
+                    points, color, *_ = self.produce_em(nb_interp, tissues, gene=g)
                     colors.append(color)
                 C = np.array(colors)
                 if min_g1 is None:
@@ -848,7 +846,7 @@ class Embryo(object):
                     fig.tight_layout()
                     fig.savefig(path_scale)
         else:
-            points, color = self.produce_em(nb_interp, tissues, gene=gene)
+            points, color, *_ = self.produce_em(nb_interp, tissues, gene=gene)
             color = np.array(color)
         points = np.array(points)
         dist_to_plan = equation(points)
@@ -877,7 +875,7 @@ class Embryo(object):
         if output_path is not None:
             fig.savefig(output_path)
         return points_to_plot
-    
+
     def ply_slice(self, file_name, angle, color_map, rot_orig=[0, 0, 1],
                   origin=[0, 0, 0], thickness=30, tissues=None,
                   tissues_colored=None, angle_unit='degree',
@@ -917,7 +915,7 @@ class Embryo(object):
         rot_composed = rot_x@rot_y@rot_z
         new_axis = (np.hstack([rot_orig, 1])@rot_composed)[:-1]
         equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
-        points, color = self.produce_em(nb_interp, tissues, gene=gene)
+        points, color, *_ = self.produce_em(nb_interp, tissues, gene=gene)
         points = np.array(points)
         color = np.array(color)
         plan = (np.abs(equation(points))<thickness)
@@ -938,12 +936,12 @@ class Embryo(object):
         else:
             pcd.colors = o3d.utility.Vector3dVector(color_to_plot)
         o3d.io.write_point_cloud(file_name, pcd)
-        
+
         return points_to_plot
 
-    def anndata_slice(self, file_name, angle, gene_list, rot_orig=[0, 0, 1],
-                      origin=[0, 0, 0], thickness=30, tissues=None,
-                      angle_unit='degree', nb_interp=5):
+    def anndata_slice(self, file_name, angle, gene_list, rot_orig=None,
+                      origin=None, thickness=30, tissues=None,
+                      angle_unit='degree'):
         """
         Build a anndata file containing a slice
 
@@ -959,8 +957,6 @@ class Embryo(object):
             tissues ([t_id, ]): list of tissue ids to plot
             angle_unit (str): if `'degree'` the angle is treated as degrees.
                 Otherwise it is treated a radii
-            nb_interp (int): number of pucks to interpolate in between
-                existing pucks
             gene_list ([str, ]): list of the gene names to interpolate
                 (only selected genes can be inputed)
         Returns:
@@ -971,6 +967,10 @@ class Embryo(object):
             tissues = self.all_tissues
         if angle_unit == 'degree':
             angle = np.deg2rad(angle)
+        if rot_orig is None:
+            rot_orig = [0, 0, 1]
+        if origin is None:
+            origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
         rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
         rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
@@ -995,8 +995,8 @@ class Embryo(object):
 
         return points_to_plot
 
-    def anndata_no_extra(self, file_name, angle, rot_orig=[0, 0, 1],
-                         origin=[0, 0, 0], thickness=30, angle_unit='degree'):
+    def anndata_no_extra(self, file_name, angle, rot_orig=None,
+                         origin=None, thickness=30, angle_unit='degree'):
         """
         Build a anndata file containing a slice without doing interpolation
         but any gene can be requested
@@ -1022,6 +1022,10 @@ class Embryo(object):
         """
         if angle_unit == 'degree':
             angle = np.deg2rad(angle)
+        if rot_orig is None:
+            rot_orig = [0, 0, 1]
+        if origin is None:
+            origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
         rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
         rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
@@ -1031,7 +1035,6 @@ class Embryo(object):
         equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
         cells = np.array(sorted(self.all_cells))
         pos = np.array([list(self.final[c])+[self.z_pos[c]] for c in cells])
-        tissue = np.array([self.tissue[c] for c in cells])
         kept = cells[(np.abs(equation(pos))<thickness)]
         data_tmp = self.anndata.copy()
         data_tmp = data_tmp[kept]
@@ -1090,8 +1093,7 @@ class Embryo(object):
                         L.extend(traj_expr(spacing))
         if gene_list is not None:
             return points, colors, gene_expr
-        else:
-            return points, colors
+        return points, colors
 
     def get_differential_genes_main_axis(self, t,
                                          plot=True,
@@ -1145,7 +1147,8 @@ class Embryo(object):
             gene_names_axe[axe] = data.var_names[candidate_genes]
         return gene_names, gene_names_axe
 
-    def threshold_otsu(self, values, nbins=256):
+    @staticmethod
+    def threshold_otsu(values, nbins=256):
         """Return threshold value based on Otsu's method.
             Parameters
             ----------
@@ -1297,7 +1300,6 @@ class Embryo(object):
         regr.fit(data_x_reshaped, data_y_reshaped)
         b = regr.intercept_[0]
         a = regr.coef_[0][0]
-        line = lambda x: (a*np.array(x)+b)
 
         data_plot['Distance_to_reg'] = np.abs((data_y_reshaped-
                                                regr.predict(data_x_reshaped))[:,0])
@@ -1348,16 +1350,16 @@ class Embryo(object):
 
         if not hasattr(self, 'diff_expressed_3D'):
             self.diff_expressed_3D = {}
-            
+
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
                 self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol,
                                                              all_genes=all_genes)
 
-        if hasattr(self, 'tissues_diff_expre_processed'):
-            self.tissues_diff_expre_processed.extend(tissues_to_process)
-        else:
+        if not hasattr(self, 'tissues_diff_expre_processed'):
             self.tissues_diff_expre_processed = tissues_to_process
+        else:
+            self.tissues_diff_expre_processed.extend(tissues_to_process)
         self.all_genes = all_genes
         return self.diff_expressed_3D
 
@@ -1414,7 +1416,7 @@ class Embryo(object):
         if not repetition_allowed:
             dict_counter = Counter(genes_of_interest)
             acc = 0
-            while any([1<k for k in dict_counter.values()]):
+            while any(1<k for k in dict_counter.values()):
                 t = tissues_to_process[acc%len(tissues_to_process)]
                 for g in genes_in[t]:
                     if 1<dict_counter[g]:
@@ -1485,7 +1487,6 @@ class Embryo(object):
             fig = ax.get_figure()
         x = 'avg_nb_neighbs'
         y = 'volume'
-        print_text = True
         g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Distance_to_reg', **kwargs)
         legend = g.axes.get_legend()
         legend.set_title('Localization score')
@@ -1523,7 +1524,6 @@ class Embryo(object):
                 the top `nb` localized genes.
         """
         data_plot = self.diff_expressed_3D[tissue]
-        gene_values = []
         order = data_plot.sort_values('Distance_to_reg', ascending=False)[:nb]
         return order
 
@@ -1569,9 +1569,35 @@ class Embryo(object):
         self.tissues_to_ignore = [] if tissues_to_ignore is None else tissues_to_ignore
         self.corres_tissue = {} if corres_tissue is None else corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
+        self.z_space = None
+        self.z_pos = None
+        self.all_cells = None
+        self.cell_names = None
+        self.all_genes = None
+        self.gene_expression = None
+        self.centered_pos = None
+        self.tissue_centers = None
+        self.tissue_centers_reg = None
+        self.registered_pos = None
+        self.pairing = None
+        self.pos_reg_aff = None
+        self.final = None
+        self.filtered_cells = None
+        self.GG_cs = None
+        self.KDT_cs = None
+        self.KDT_cs_down = None
+        self.paired_cs_down = None
+        self.KDT_cs_up = None
+        self.paired_cs_up = None
+        self.all_trajs = None
+        self.all_expr = None
+        self.full_GG = None
+        self.gene_expr_th = None
+        self.whole_tissue_nb_N = None
+        self.diff_expressed_3D = None
+        self.tissues_diff_expre_processed = None
+
         if data_path.split('.')[-1] == 'h5ad':
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
                               store_anndata=store_anndata)
-
-    
