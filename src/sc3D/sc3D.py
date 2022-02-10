@@ -307,9 +307,9 @@ class Embryo:
         """
         Register together all the pucks using tissue center of masses.
         """
-        if not hasattr(self, 'centered_pos'):
+        if self.centered_pos is None:
             self.center_data()
-        if not hasattr(self, 'tissue_centers'):
+        if self.tissue_centers is None:
             self.get_tissue_centers()
         cs_ref = self.all_cover_slips[0]
         self.tissue_centers_reg[cs_ref] = self.tissue_centers[cs_ref]
@@ -1563,8 +1563,8 @@ class Embryo:
         self.cell_names = None
         self.all_genes = None
         self.gene_expression = None
-        self.centered_pos = {}
-        self.tissue_centers = {}
+        self.centered_pos = None
+        self.tissue_centers = None
         self.tissue_centers_reg = {}
         self.registered_pos = None
         self.pairing = {}
