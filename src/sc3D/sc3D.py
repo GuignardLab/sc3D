@@ -1198,7 +1198,7 @@ class Embryo:
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        if all_genes or sp.sparse.issparse(embryo.anndata.X):
+        if all_genes or sp.sparse.issparse(self.anndata.X):
             out = map(self.threshold_otsu, self.anndata.raw.X.todense().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)

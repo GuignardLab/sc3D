@@ -6,9 +6,9 @@ This code was developed in the context of the following study:
 
 **Spatial transcriptomic maps of whole mouse embryos reveal principles of neural tube patterning.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
 
-The dataset necessary to run the test and look at the results can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private).
-
 The whole code is based on the [anndata](https://anndata.readthedocs.io/en/latest/)/[Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
+
+The dataset necessary to run the tests and look at the results can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (under the name `mouse_embryo_E8.5_merged_data`).
 
 ## Description of the repository
 
@@ -36,6 +36,12 @@ from sc3D import Embryo
 
 To import some data:
 
+**Note: at the time being, the following conventions are expected:**
+- **the x-y coordinates are stored in `data.obsm['X_spatial']`**
+- **the array number should be stored in `data.obs['orig.ident']` in the format `"{digits}_{array_id:digit}"`**
+- **the tissue type has to be stored in `data.obs['predicted.id']`**
+- **the gene names have to be stored as indices or in `data.var['feature_name']`**
+
 ```python
 # To read the data
 embryo = Embryo('path/to/data.h5ad')
@@ -54,13 +60,7 @@ th_vol = .025
 _ = embryo.get_3D_differential_expression(tissues_to_process, th_vol)
 ```
 
-**Note: at the time being, the following conventions are expected:**
-- **the x-y coordinates are stored in `data.obsm['X_spatial']`**
-- **the array number should be stored in `data.obs['orig.ident']` in the format `"{digits}_{array_id:digit}"`**
-- **the tissue type has to be stored in `data.obs['predicted.id']`**
-- **the gene names have to be stored as indices or in `data.var['feature_name']`**
-
-The dataset used for the project this code is from can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (it is under the name `mouse_embryo_E8.5_merged_data`)
+The dataset used for the project this code is from can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (under the name `mouse_embryo_E8.5_merged_data`)
 
 Many other functions are available that can be found used in the two provided jupyter notebooks.
 
