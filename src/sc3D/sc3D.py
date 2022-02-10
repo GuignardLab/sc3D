@@ -117,8 +117,7 @@ class Embryo:
                                    map(lambda x, y: str.split(x, y)[-1],
                                        data.obs_names, '_'*len(data))))
         self.pos = dict(zip(ids,
-                            np.array(list(zip(data.obs['xcoord'],
-                                              data.obs['ycoord'])))*xy_resolution))
+                            data.obsm['X_spatial']*xy_resolution))
         self.tissue = dict(zip(ids,
                                data.obs['predicted.id'].astype(int)))
         cs = list(map(lambda x, y: int(str.split(x, y)[1]),
@@ -1034,7 +1033,7 @@ class Embryo:
         data_tmp = data_tmp[kept]
         pos_final = np.array([list(self.final[c])+[self.z_pos[c]] for c in kept])
         pos_final = (np.hstack([pos_final, [[1]]*pos_final.shape[0]])@rot_composed)[:, :-1]
-        data_tmp.obsm['X_spatial2'] = pos_final
+        data_tmp.obsm['X_spatial_registered'] = pos_final
         data_tmp.write(file_name)
 
 
