@@ -1506,9 +1506,11 @@ class Embryo:
         if print_genes is not None:
             for gene in print_genes:
                 gene_num_all = np.where(self.anndata.var_names==gene)[0][0]
-                gene_num = np.where(data_plot['Interesting genes']==gene_num_all)[0][0]
-                plt.text(x=data_plot[x][gene_num],y=data_plot[y][gene_num],s=gene,
-                         fontdict=dict(color='red',size=8, fontweight='bold'), va='baseline')
+                gene_num = np.where(data_plot['Interesting genes']==gene_num_all)[0]
+                if gene_num.any():
+                    gene_num = gene_num[0]
+                    plt.text(x=data_plot[x][gene_num],y=data_plot[y][gene_num],s=gene,
+                             fontdict=dict(color='red',size=8, fontweight='bold'), va='baseline')
         ax.set_title(self.corres_tissue[t])
         fig.tight_layout()
         if output_path is not None:
