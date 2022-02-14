@@ -125,19 +125,19 @@ class Embryo:
                       data.obs['orig.ident'],
                       '_'*len(data.obs['orig.ident'])))
         self.cover_slip = dict(zip(ids, cs))
+
+        if 'feature_name' in data.var:
+            data.var_names = list(data.var.feature_name)
         if genes_of_interest is None:
             genes_of_interest = []
         elif genes_of_interest == 'all':
-            if 'feature_name' in data.var:
-                genes_of_interest = list(data.var.feature_name)
-            else:
-                genes_of_interest = data.var_names
+            genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
         if 0<len(genes_of_interest):
-            if 'feature_name' in data.var:
-                self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(self.all_genes)].X.A)))
-            else:
-                self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
+            # if 'feature_name' in data.var:
+            #     self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(self.all_genes)].X.A)))
+            # else:
+            self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
         else:
             self.gene_expression = {id_:[] for id_ in ids}
 
@@ -147,10 +147,10 @@ class Embryo:
             self.cells_from_tissue.setdefault(T, set()).add(c)
         self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
         self.all_tissues = set(self.cells_from_tissue)
-        if 'feature_name' in data.var:
-            data[:, data.var.feature_name.isin(self.all_genes)].X.A
-        else:
-            self.data = data.raw[:, self.all_genes].X.A
+        # if 'feature_name' in data.var:
+        #     data[:, data.var.feature_name.isin(self.all_genes)].X.A
+        # else:
+        self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
 
