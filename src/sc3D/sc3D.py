@@ -1199,7 +1199,7 @@ class Embryo:
                 following the same order as the gene order in `self.anndata`
         """
         if all_genes or sp.sparse.issparse(self.anndata.X):
-            out = map(self.threshold_otsu, self.anndata.raw.X.todense().T)
+            out = map(self.threshold_otsu, self.anndata.raw.X.toarray().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
@@ -1258,7 +1258,7 @@ class Embryo:
         if all_genes:
             data = self.anndata.raw.X
         elif sp.sparse.issparse(self.anndata.X):
-            data = self.anndata.X.todense()
+            data = self.anndata.X.toarray()
         else:
             data = self.anndata.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
@@ -1266,7 +1266,7 @@ class Embryo:
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
         if all_genes:
-            sub_data = np.array(sub_data.todense())
+            sub_data = np.array(sub_data.toarray())
 
         # Occupied volume for the cells of tissue *t*
         volume_total = len(cells)
