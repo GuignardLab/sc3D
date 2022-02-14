@@ -1265,7 +1265,7 @@ class Embryo:
 
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
-        if all_genes or :
+        if all_genes:
             sub_data = np.array(sub_data.todense())
 
         # Occupied volume for the cells of tissue *t*
