@@ -43,9 +43,12 @@ class Embryo:
         """
         self.z_space = z_space
         self.z_pos = {}
+        self.pos_3D = {}
         cs_conversion = {b: a*z_space for a, b in enumerate(self.all_cover_slips)}
         for c in self.all_cells:
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
+            x, y = self.pos[c]
+            self.pos_3D[c] = np.array([x, y, self.z_pos[c]])
 
     def read_csv(self, path, xy_resolution=1, encoding=None):
         """
@@ -472,7 +475,6 @@ class Embryo:
                 if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
                            for i in neighbs.intersection(delaunay_graph[ni])):
                     Gabriel_graph.setdefault(e1, set()).add(ni)
-                    Gabriel_graph.setdefault(ni, set()).add(e1)
 
         final_GG = {}
         for e1, neighbs in Gabriel_graph.items():
@@ -1535,7 +1537,7 @@ class Embryo:
         if not t in self.diff_expressed_3D:
             print(f'The tissue {tissue} ({self.corres_tissue[tissue]}) has not been processed yet.')
             print('No figure can be made.')
-            return []
+            return
         data_plot = self.diff_expressed_3D[tissue]
         order = data_plot.sort_values('Distance_to_reg', ascending=False)[:nb]
         return order
