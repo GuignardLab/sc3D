@@ -738,6 +738,7 @@ class Embryo:
 
             all_trajs[traj[0]] = [min(z_traj), max(z_traj), f_traj_x, f_traj_y]
             cells_to_treat -= set(traj)
+        self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]]) for c in cells}
         self.all_trajs = all_trajs
         self.all_expr = all_expr
 
