@@ -1257,13 +1257,15 @@ class Embryo:
         """
         if all_genes:
             data = self.anndata.raw.X
+        elif sp.sparse.issparse(self.anndata.X):
+            data = self.anndata.X.todense()
         else:
             data = self.anndata.copy().X
         cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
 
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
-        if all_genes:
+        if all_genes or :
             sub_data = np.array(sub_data.todense())
 
         # Occupied volume for the cells of tissue *t*
