@@ -499,7 +499,11 @@ class Embryo:
                                for i in neighbs.intersection(delaunay_graph[ni])):
                         X.append(node_ids[e1])
                         Y.append(node_ids[ni])
+                        X.append(node_ids[ni])
+                        Y.append(node_ids[e1])
             final_GG = sp.sparse.coo_array(([True]*len(X), (X, Y)), shape=(max(node_ids)+1, max(node_ids)+1))
+            final_GG = final_GG.tocsr()
+
         return final_GG
 
     def plot_coverslip(self, cs, pos='pos', ax=None,
@@ -1192,7 +1196,6 @@ class Embryo:
             ----------
             .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
         """
-        map(np.histogram, values)
         hist, bin_edges = np.histogram(values, nbins)
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.
 
@@ -1222,8 +1225,10 @@ class Embryo:
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        if all_genes or sp.sparse.issparse(self.anndata.X):
+        if all_genes:
             out = map(self.threshold_otsu, self.anndata.raw.X.toarray().T)
+        elif sp.sparse.issparse(self.anndata.X):
+            out = map(self.threshold_otsu, self.anndata.X.toarray().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
@@ -1252,12 +1257,11 @@ class Embryo:
         positive_cells = np.where(self.gene_expr_th[gene]<sub_data[:,gene])[0]
 
         # Ids of positive cells
-        positive_cells = cells[positive_cells]
+        positive_cells = np.array(cells[positive_cells])
 
         nb_neighbs = []
-        for p in positive_cells:
-            nb_neighbs.append(len([n for n in self.full_GG[p] if n in positive_cells]))
-        avg_nb_neighbs = np.mean(nb_neighbs)
+        avg_nb_neighbs = self.full_GG[positive_cells.T, positive_cells].sum()
+        avg_nb_neighbs /= len(positive_cells)
         return avg_nb_neighbs
 
     def cell_groups(self, t, th_vol=.025,
@@ -1375,7 +1379,10 @@ class Embryo:
             self.whole_tissue_nb_N = {}
             for t in self.all_tissues:
                 cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
-                self.whole_tissue_nb_N[t] = np.median([len(self.full_GG[c]) for c in cells])
+                if 0<len(cells):
+                    self.whole_tissue_nb_N[t] = (self.full_GG[cells].nnz)/len(cells)
+                else:
+                    self.whole_tissue_nb_N[t] = 0
 
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
