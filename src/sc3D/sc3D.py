@@ -1316,15 +1316,15 @@ class Embryo:
 
         # Build a dataframe with the previously computed metrics
         data_plot = {
-            'volume': sub_volumes[mask_expr],
-            'avg_nb_neighbs': avg_nb_neighbs,
+            'Volume ratio': sub_volumes[mask_expr],
+            'Avg #Neighbors ratio': avg_nb_neighbs,
         }
 
         # Compute the linear regression
         # Value against which the linear regression is done
         # It is important that the relationship between x and y is linear!!!
-        regression_x = 'avg_nb_neighbs'
-        regression_y = 'volume'
+        regression_x = 'Avg #Neighbors ratio'
+        regression_y = 'Volume ratio'
 
         regr = linear_model.LinearRegression()
         data_x_reshaped = data_plot[regression_x].reshape(-1,1)
@@ -1333,13 +1333,13 @@ class Embryo:
         b = regr.intercept_[0]
         a = regr.coef_[0][0]
 
-        data_plot['Distance_to_reg'] = np.abs((data_y_reshaped-
+        data_plot['Localization score'] = np.abs((data_y_reshaped-
                                                regr.predict(data_x_reshaped))[:,0])
-        data_plot['Interesting genes'] = interesting_genes
+        data_plot['Interesting gene row ID'] = interesting_genes
         if all_genes:
-            data_plot['Gene names'] = np.array(self.anndata.raw[:,data_plot['Interesting genes']].var_names)
+            data_plot['Gene names'] = np.array(self.anndata.raw[:,data_plot['Interesting gene row ID']].var_names)
         else:
-            data_plot['Gene names'] = np.array(self.anndata[:,data_plot['Interesting genes']].var_names)
+            data_plot['Gene names'] = np.array(self.anndata[:,data_plot['Interesting gene row ID']].var_names)
         data_plot = pd.DataFrame(data_plot)
 
         return data_plot
@@ -1450,8 +1450,8 @@ class Embryo:
         added_genes = 1 if repetition_allowed else 4
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
-            G_N = data_t.sort_values('Distance_to_reg')['Interesting genes'][:-nb_genes*added_genes-1:-1]
-            G_V = data_t.sort_values('Distance_to_reg')['Distance_to_reg'][:-nb_genes*added_genes-1:-1]
+            G_N = data_t.sort_values('Localization score')['Interesting gene row ID'][:-nb_genes*added_genes-1:-1]
+            G_V = data_t.sort_values('Localization score')['Localization score'][:-nb_genes*added_genes-1:-1]
             genes_of_interest.extend(G_N[:nb_genes])
             for g, v in zip(G_N, G_V):
                 tissue_genes.setdefault(g, []).append(t)
@@ -1479,8 +1479,8 @@ class Embryo:
         for i, g in enumerate(genes_of_interest):
             for j, t in enumerate(tissues_to_process):
                 data_t = self.diff_expressed_3D[t]
-                if g in data_t['Interesting genes'].values:
-                    values[i, j] = data_t[data_t['Interesting genes']==g]['Distance_to_reg']
+                if g in data_t['Interesting gene row ID'].values:
+                    values[i, j] = data_t[data_t['Interesting gene row ID']==g]['Localization score']
                 if i==0:
                     tissue_order.append(t)
         # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
@@ -1534,15 +1534,15 @@ class Embryo:
             fig, ax = plt.subplots(figsize=(10, 8))
         if fig is None:
             fig = ax.get_figure()
-        x = 'avg_nb_neighbs'
-        y = 'volume'
-        g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Distance_to_reg', **kwargs)
+        x = 'Avg #Neighbors ratio'
+        y = 'Volume ratio'
+        g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Localization score', **kwargs)
         legend = g.axes.get_legend()
         legend.set_title('Localization score')
         ax.set_ylabel('Relative volume (to total tissue volume)')
         ax.set_xlabel('Relative cell density (to the average cell density within the tissue)')
         if print_top is not None:
-            top_X = data_plot.sort_values('Distance_to_reg', ascending=False)[:print_top]
+            top_X = data_plot.sort_values('Localization score', ascending=False)[:print_top]
             x_values = top_X[x]
             y_values = top_X[y]
             names = top_X['Gene names']
@@ -1552,7 +1552,7 @@ class Embryo:
         if print_genes is not None:
             for gene in print_genes:
                 gene_num_all = np.where(self.anndata.var_names==gene)[0][0]
-                gene_num = np.where(data_plot['Interesting genes']==gene_num_all)[0]
+                gene_num = np.where(data_plot['Interesting gene row ID']==gene_num_all)[0]
                 if gene_num.any():
                     gene_num = gene_num[0]
                     plt.text(x=data_plot[x][gene_num],y=data_plot[y][gene_num],s=gene,
@@ -1579,7 +1579,7 @@ class Embryo:
             print('No figure can be made.')
             return
         data_plot = self.diff_expressed_3D[tissue]
-        order = data_plot.sort_values('Distance_to_reg', ascending=False)[:nb]
+        order = data_plot.sort_values('Localization score', ascending=False)[:nb]
         return order
 
     def __init__(self, data_path, tissues_to_ignore=None,
