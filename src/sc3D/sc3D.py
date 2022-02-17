@@ -1339,7 +1339,7 @@ class Embryo:
         if all_genes:
             data_plot['Gene names'] = np.array(self.anndata.raw.var_names[data_plot['Interesting gene row ID']])
         else:
-            data_plot['Gene names'] = np.array(self.anndata.var_names[:,data_plot['Interesting gene row ID']])
+            data_plot['Gene names'] = np.array(self.anndata.var_names[data_plot['Interesting gene row ID']])
         data_plot = pd.DataFrame(data_plot)
 
         return data_plot
