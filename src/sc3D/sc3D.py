@@ -1259,7 +1259,6 @@ class Embryo:
         # Ids of positive cells
         positive_cells = np.array(cells[positive_cells])
 
-        nb_neighbs = []
         avg_nb_neighbs = self.full_GG[positive_cells.T, positive_cells].sum()
         avg_nb_neighbs /= len(positive_cells)
         return avg_nb_neighbs
@@ -1368,13 +1367,20 @@ class Embryo:
         """
         cells = list(self.all_cells)
         pos_3D = [self.pos_3D[c] for c in cells]
-
+        from time import time
+        tic = time()
         if self.full_GG is None:
-            self.full_GG = self.build_gabriel_graph(cells, pos_3D)
+            self.full_GG = self.build_gabriel_graph(cells, pos_3D,
+                                                    data_struct='adj-mat')
 
+        print(f'GG built: {time()-tic} sec')
+
+        tic = time()
         if self.gene_expr_th is None:
             self.gene_expr_th = self.compute_expr_thresholds(all_genes=all_genes)
+        print(f'Thresholds built: {time()-tic} sec')
 
+        tic = time()
         if self.whole_tissue_nb_N is None:
             self.whole_tissue_nb_N = {}
             for t in self.all_tissues:
@@ -1383,17 +1389,23 @@ class Embryo:
                     self.whole_tissue_nb_N[t] = (self.full_GG[cells].nnz)/len(cells)
                 else:
                     self.whole_tissue_nb_N[t] = 0
+        print(f'whole_tissue_nb_N built: {time()-tic} sec')
 
+        tic = time()
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
                 self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol,
                                                              all_genes=all_genes)
+        print(f'diff_expressed_3D built: {time()-tic} sec')
 
+        tic = time()
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
         else:
             self.tissues_diff_expre_processed.extend(tissues_to_process)
         self.all_genes = all_genes
+
+        print(f'tissues_diff_expre_processed built: {time()-tic} sec')
         return self.diff_expressed_3D
 
     def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
