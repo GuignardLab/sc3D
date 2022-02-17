@@ -1257,10 +1257,10 @@ class Embryo:
         positive_cells = np.where(self.gene_expr_th[gene]<sub_data[:,gene])[0]
 
         # Ids of positive cells
-        positive_cells = np.array(cells[positive_cells])
+        positive_cells = cells[positive_cells].reshape(1, -1)
 
         avg_nb_neighbs = self.full_GG[positive_cells.T, positive_cells].sum()
-        avg_nb_neighbs /= len(positive_cells)
+        avg_nb_neighbs /= positive_cells.shape[1]
         return avg_nb_neighbs
 
     def cell_groups(self, t, th_vol=.025,
