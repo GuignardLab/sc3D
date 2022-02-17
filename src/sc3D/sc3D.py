@@ -1574,7 +1574,7 @@ class Embryo:
             order (`nb` x m pandas.DataFrame): DataFrame containing
                 the top `nb` localized genes.
         """
-        if not t in self.diff_expressed_3D:
+        if not tissue in self.diff_expressed_3D:
             print(f'The tissue {tissue} ({self.corres_tissue[tissue]}) has not been processed yet.')
             print('No figure can be made.')
             return
