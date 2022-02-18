@@ -15,9 +15,10 @@ setup(
     name='sc3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
-    version='0.1.1',
+    version='0.1.2',
     description='Array alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/leoguignard/sc3D',
     classifiers=[
         'Development Status :: 4 - Beta',
