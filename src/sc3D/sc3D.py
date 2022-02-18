@@ -447,7 +447,7 @@ class Embryo:
         return M
 
     @staticmethod
-    def build_gabriel_graph(node_ids, pos):
+    def build_gabriel_graph(node_ids, pos, data_struct='adj-dict'):
         """
         Build the gabriel graph of a set of nodes with
         associtated positions.
@@ -456,11 +456,18 @@ class Embryo:
             node_ids ([int, ] (size n)): list of node ids
             pos (n x m ndarray): ndarray of the positions where n is
                 the number of nodes and m is the spatial dimension
+            data_struct (str): in which type of data structure will
+                the graph be saved, currently either 'adj-dict' and
+                'adj-mat' are supported.
+                'adj-dict': Adjacency dictionary
+                'adj-mat' : Adjacency matrix
         Returns:
             final_GG (dict id: set([ids, ])): the gabriel graph as
                 an adjacency list, a dictionary that maps node ids
                 to the list of neighboring node ids
         """
+        if not data_struct in ['adj-dict', 'adj-mat']:
+            raise ValueError('Data structure for the Gabriel graph not understood')
         tmp = Delaunay(pos)
         delaunay_graph = {}
 
@@ -468,19 +475,35 @@ class Embryo:
             for e1, e2 in combinations(np.sort(N), 2):
                 delaunay_graph.setdefault(e1, set()).add(e2)
                 delaunay_graph.setdefault(e2, set()).add(e1)
-        Gabriel_graph = {}
 
-        for e1, neighbs in delaunay_graph.items():
-            for ni in neighbs:
-                if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
-                           for i in neighbs.intersection(delaunay_graph[ni])):
-                    Gabriel_graph.setdefault(e1, set()).add(ni)
+        if data_struct.lower() == 'adj-dict':
+            Gabriel_graph = {}
+            for e1, neighbs in delaunay_graph.items():
+                for ni in neighbs:
+                    if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
+                               for i in neighbs.intersection(delaunay_graph[ni])):
+                        Gabriel_graph.setdefault(e1, set()).add(ni)
+                        Gabriel_graph.setdefault(ni, set()).add(e1)
 
-        final_GG = {}
-        for e1, neighbs in Gabriel_graph.items():
-            neighbs = np.array(list(neighbs))
-            distances = np.linalg.norm(pos[e1] - [pos[ni] for ni in neighbs], axis=1)
-            final_GG[node_ids[e1]] = {node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]}
+            final_GG = {}
+            for e1, neighbs in Gabriel_graph.items():
+                neighbs = np.array(list(neighbs))
+                distances = np.linalg.norm(pos[e1] - [pos[ni] for ni in neighbs], axis=1)
+                final_GG[node_ids[e1]] = {node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]}
+
+        elif data_struct.lower() == 'adj-mat':
+            X, Y = [], []
+            for e1, neighbs in delaunay_graph.items():
+                for ni in [n for n in neighbs if e1<n]:
+                    if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
+                               for i in neighbs.intersection(delaunay_graph[ni])):
+                        X.append(node_ids[e1])
+                        Y.append(node_ids[ni])
+                        X.append(node_ids[ni])
+                        Y.append(node_ids[e1])
+            final_GG = sp.sparse.coo_array(([True]*len(X), (X, Y)), shape=(max(node_ids)+1, max(node_ids)+1))
+            final_GG = final_GG.tocsr()
+
         return final_GG
 
     def plot_coverslip(self, cs, pos='pos', ax=None,
@@ -738,6 +761,8 @@ class Embryo:
 
             all_trajs[traj[0]] = [min(z_traj), max(z_traj), f_traj_x, f_traj_y]
             cells_to_treat -= set(traj)
+        self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
+                            for c in self.all_cells}
         self.all_trajs = all_trajs
         self.all_expr = all_expr
 
@@ -1171,7 +1196,6 @@ class Embryo:
             ----------
             .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
         """
-        map(np.histogram, values)
         hist, bin_edges = np.histogram(values, nbins)
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.
 
@@ -1201,8 +1225,10 @@ class Embryo:
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        if all_genes or sp.sparse.issparse(self.anndata.X):
+        if all_genes:
             out = map(self.threshold_otsu, self.anndata.raw.X.toarray().T)
+        elif sp.sparse.issparse(self.anndata.X):
+            out = map(self.threshold_otsu, self.anndata.X.toarray().T)
         else:
             out = map(self.threshold_otsu, self.anndata.X.T)
         th = []
@@ -1231,12 +1257,10 @@ class Embryo:
         positive_cells = np.where(self.gene_expr_th[gene]<sub_data[:,gene])[0]
 
         # Ids of positive cells
-        positive_cells = cells[positive_cells]
+        positive_cells = cells[positive_cells].reshape(1, -1)
 
-        nb_neighbs = []
-        for p in positive_cells:
-            nb_neighbs.append(len([n for n in self.full_GG[p] if n in positive_cells]))
-        avg_nb_neighbs = np.mean(nb_neighbs)
+        avg_nb_neighbs = self.full_GG[positive_cells.T, positive_cells].sum()
+        avg_nb_neighbs /= positive_cells.shape[1]
         return avg_nb_neighbs
 
     def cell_groups(self, t, th_vol=.025,
@@ -1292,15 +1316,15 @@ class Embryo:
 
         # Build a dataframe with the previously computed metrics
         data_plot = {
-            'volume': sub_volumes[mask_expr],
-            'avg_nb_neighbs': avg_nb_neighbs,
+            'Volume ratio': sub_volumes[mask_expr],
+            'Avg #Neighbors ratio': avg_nb_neighbs,
         }
 
         # Compute the linear regression
         # Value against which the linear regression is done
         # It is important that the relationship between x and y is linear!!!
-        regression_x = 'avg_nb_neighbs'
-        regression_y = 'volume'
+        regression_x = 'Avg #Neighbors ratio'
+        regression_y = 'Volume ratio'
 
         regr = linear_model.LinearRegression()
         data_x_reshaped = data_plot[regression_x].reshape(-1,1)
@@ -1309,13 +1333,13 @@ class Embryo:
         b = regr.intercept_[0]
         a = regr.coef_[0][0]
 
-        data_plot['Distance_to_reg'] = np.abs((data_y_reshaped-
+        data_plot['Localization score'] = np.abs((data_y_reshaped-
                                                regr.predict(data_x_reshaped))[:,0])
-        data_plot['Interesting genes'] = interesting_genes
+        data_plot['Interesting gene row ID'] = interesting_genes
         if all_genes:
-            data_plot['Gene names'] = np.array(self.anndata.raw[:,data_plot['Interesting genes']].var_names)
+            data_plot['Gene names'] = np.array(self.anndata.raw.var_names[data_plot['Interesting gene row ID']])
         else:
-            data_plot['Gene names'] = np.array(self.anndata[:,data_plot['Interesting genes']].var_names)
+            data_plot['Gene names'] = np.array(self.anndata.var_names[data_plot['Interesting gene row ID']])
         data_plot = pd.DataFrame(data_plot)
 
         return data_plot
@@ -1342,10 +1366,10 @@ class Embryo:
                 the tissue `t_id`. The main value is in the column `Distance_to_reg`
         """
         cells = list(self.all_cells)
-        pos_3D = [np.array(list(self.final[c])+[self.z_pos[c]]) for c in cells]
-
+        pos_3D = [self.pos_3D[c] for c in cells]
         if self.full_GG is None:
-            self.full_GG = self.build_gabriel_graph(cells, pos_3D)
+            self.full_GG = self.build_gabriel_graph(cells, pos_3D,
+                                                    data_struct='adj-mat')
 
         if self.gene_expr_th is None:
             self.gene_expr_th = self.compute_expr_thresholds(all_genes=all_genes)
@@ -1354,7 +1378,10 @@ class Embryo:
             self.whole_tissue_nb_N = {}
             for t in self.all_tissues:
                 cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
-                self.whole_tissue_nb_N[t] = np.median([len(self.full_GG[c]) for c in cells])
+                if 0<len(cells):
+                    self.whole_tissue_nb_N[t] = (self.full_GG[cells].nnz)/len(cells)
+                else:
+                    self.whole_tissue_nb_N[t] = 0
 
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
@@ -1366,6 +1393,7 @@ class Embryo:
         else:
             self.tissues_diff_expre_processed.extend(tissues_to_process)
         self.all_genes = all_genes
+
         return self.diff_expressed_3D
 
     def plot_top_3D_diff_expr_genes(self, tissues_to_process, nb_genes=20,
@@ -1410,8 +1438,8 @@ class Embryo:
         added_genes = 1 if repetition_allowed else 4
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
-            G_N = data_t.sort_values('Distance_to_reg')['Interesting genes'][:-nb_genes*added_genes-1:-1]
-            G_V = data_t.sort_values('Distance_to_reg')['Distance_to_reg'][:-nb_genes*added_genes-1:-1]
+            G_N = data_t.sort_values('Localization score')['Interesting gene row ID'][:-nb_genes*added_genes-1:-1]
+            G_V = data_t.sort_values('Localization score')['Localization score'][:-nb_genes*added_genes-1:-1]
             genes_of_interest.extend(G_N[:nb_genes])
             for g, v in zip(G_N, G_V):
                 tissue_genes.setdefault(g, []).append(t)
@@ -1439,8 +1467,8 @@ class Embryo:
         for i, g in enumerate(genes_of_interest):
             for j, t in enumerate(tissues_to_process):
                 data_t = self.diff_expressed_3D[t]
-                if g in data_t['Interesting genes'].values:
-                    values[i, j] = data_t[data_t['Interesting genes']==g]['Distance_to_reg']
+                if g in data_t['Interesting gene row ID'].values:
+                    values[i, j] = data_t[data_t['Interesting gene row ID']==g]['Localization score']
                 if i==0:
                     tissue_order.append(t)
         # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
@@ -1494,15 +1522,15 @@ class Embryo:
             fig, ax = plt.subplots(figsize=(10, 8))
         if fig is None:
             fig = ax.get_figure()
-        x = 'avg_nb_neighbs'
-        y = 'volume'
-        g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Distance_to_reg', **kwargs)
+        x = 'Avg #Neighbors ratio'
+        y = 'Volume ratio'
+        g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Localization score', **kwargs)
         legend = g.axes.get_legend()
         legend.set_title('Localization score')
         ax.set_ylabel('Relative volume (to total tissue volume)')
         ax.set_xlabel('Relative cell density (to the average cell density within the tissue)')
         if print_top is not None:
-            top_X = data_plot.sort_values('Distance_to_reg', ascending=False)[:print_top]
+            top_X = data_plot.sort_values('Localization score', ascending=False)[:print_top]
             x_values = top_X[x]
             y_values = top_X[y]
             names = top_X['Gene names']
@@ -1512,7 +1540,7 @@ class Embryo:
         if print_genes is not None:
             for gene in print_genes:
                 gene_num_all = np.where(self.anndata.var_names==gene)[0][0]
-                gene_num = np.where(data_plot['Interesting genes']==gene_num_all)[0]
+                gene_num = np.where(data_plot['Interesting gene row ID']==gene_num_all)[0]
                 if gene_num.any():
                     gene_num = gene_num[0]
                     plt.text(x=data_plot[x][gene_num],y=data_plot[y][gene_num],s=gene,
@@ -1534,12 +1562,12 @@ class Embryo:
             order (`nb` x m pandas.DataFrame): DataFrame containing
                 the top `nb` localized genes.
         """
-        if not t in self.diff_expressed_3D:
+        if not tissue in self.diff_expressed_3D:
             print(f'The tissue {tissue} ({self.corres_tissue[tissue]}) has not been processed yet.')
             print('No figure can be made.')
             return
         data_plot = self.diff_expressed_3D[tissue]
-        order = data_plot.sort_values('Distance_to_reg', ascending=False)[:nb]
+        order = data_plot.sort_values('Localization score', ascending=False)[:nb]
         return order
 
     def __init__(self, data_path, tissues_to_ignore=None,
