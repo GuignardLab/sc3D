@@ -28,6 +28,33 @@ The dataset necessary to run the tests and look at the results can be downloaded
 
 - spec-file.txt: File containing all the libraries necessary to run sc3D
 
+## Installation
+
+The current version of sc3D has only been tested with the Python 3.8  (though it is not working with Python>=3.9 because of the open3d dependency)
+
+We strongly advise to use virtual environments to install this package. For example:
+
+```shell
+conda create -n sc-3D python==3.8
+conda activate sc-3D
+```
+
+If necessary, install `pip`:
+```shell
+conda install pip
+```
+
+Then, the installation can be done directly from pip:
+```shell
+pip install sc-3D
+```
+
+or from the GitHub repository:
+
+```shell
+pip install .
+```
+
 ## Basic usage
 
 Once installed, the library can be called the following way:
@@ -65,33 +92,6 @@ _ = embryo.get_3D_differential_expression(tissues_to_process, th_vol)
 The dataset used for the project this code is from can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (under the name `mouse_embryo_E8.5_merged_data`)
 
 Many other functions are available that can be found used in the two provided jupyter notebooks.
-
-## Installation
-
-The current version of sc3D has only been tested with the Python 3.8  (though it is not working with Python>=3.9 because of the open3d dependency)
-
-We strongly advise to use virtual environments to install this package. For example:
-
-```shell
-conda create -n sc3D python==3.8
-conda activate sc3D
-```
-
-If necessary, install `pip`:
-```shell
-conda install pip
-```
-
-Then, the installation can be done either from this repository:
-
-```shell
-pip install .
-```
-
-or directly from pip:
-```shell
-pip install sc3D
-```
 
 ## Running the notebooks
 Two example notebooks are provided.
