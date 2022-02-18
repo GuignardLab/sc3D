@@ -131,7 +131,11 @@ class Embryo:
 
         if 'feature_name' in data.var:
             data.var.set_index('feature_name', inplace=True)
-            data.raw.var.set_index('feature_name', inplace=True)
+            if 'feature_name' in data.raw.var:
+                data.raw.var.set_index('feature_name', inplace=True)
+            else:
+                data.raw.var.set_index(data.var['feature_name'],
+                                       inplace=True)
         if genes_of_interest is None:
             genes_of_interest = []
         elif genes_of_interest == 'all':
