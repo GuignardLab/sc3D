@@ -138,9 +138,6 @@ class Embryo:
             genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
         if 0<len(genes_of_interest):
-            # if 'feature_name' in data.var:
-            #     self.gene_expression = dict(zip(ids, np.array(data[:, data.var.feature_name.isin(self.all_genes)].X.A)))
-            # else:
             self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
         else:
             self.gene_expression = {id_:[] for id_ in ids}
@@ -151,8 +148,6 @@ class Embryo:
             self.cells_from_tissue.setdefault(T, set()).add(c)
         self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
         self.all_tissues = set(self.cells_from_tissue)
-        # if 'feature_name' in data.var:
-        #     data[:, data.var.feature_name.isin(self.all_genes)].X.A
         # else:
         self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
@@ -1217,7 +1212,7 @@ class Embryo:
         threshold = bin_centers[:-1][idx]
         return threshold
 
-    def compute_expr_thresholds(self, all_genes=True):
+    def compute_expr_thresholds(self):
         """
         Compute the expression threshold for all genes
 
@@ -1225,7 +1220,7 @@ class Embryo:
             th ([float, ] ndarray): list of thresholds for each genes
                 following the same order as the gene order in `self.anndata`
         """
-        if all_genes:
+        if self.all_genes:
             out = map(self.threshold_otsu, self.anndata.raw.X.toarray().T)
         elif sp.sparse.issparse(self.anndata.X):
             out = map(self.threshold_otsu, self.anndata.X.toarray().T)
@@ -1263,8 +1258,7 @@ class Embryo:
         avg_nb_neighbs /= positive_cells.shape[1]
         return avg_nb_neighbs
 
-    def cell_groups(self, t, th_vol=.025,
-                    all_genes=True):
+    def cell_groups(self, t, th_vol=.025):
         """
         Compute the local expression metric for each gene in a given tissue `t`
 
@@ -1274,15 +1268,12 @@ class Embryo:
                 Any gene expression that covers more that 1-th_vol
                 fraction of the tissue volume or less that th_vol fraction
                 of the tissue volume is discarded.
-            all_genes (bool): True if all the genes should be considered.
-                Otherwise only the previously computed variable genes are
-                considered
         Returns:
             data_plot (pandas.DataFrame): pandas DataFrame containing most
                 of the computed information for gene localization of the tissue
                 `t`. The main value is in the column `Distance_to_reg`
         """
-        if all_genes:
+        if self.all_genes:
             data = self.anndata.raw.X
         elif sp.sparse.issparse(self.anndata.X):
             data = self.anndata.X.toarray()
@@ -1292,7 +1283,7 @@ class Embryo:
 
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
-        if all_genes:
+        if self.all_genes:
             sub_data = np.array(sub_data.toarray())
 
         # Occupied volume for the cells of tissue *t*
@@ -1336,7 +1327,7 @@ class Embryo:
         data_plot['Localization score'] = np.abs((data_y_reshaped-
                                                regr.predict(data_x_reshaped))[:,0])
         data_plot['Interesting gene row ID'] = interesting_genes
-        if all_genes:
+        if self.all_genes:
             data_plot['Gene names'] = np.array(self.anndata.raw.var_names[data_plot['Interesting gene row ID']])
         else:
             data_plot['Gene names'] = np.array(self.anndata.var_names[data_plot['Interesting gene row ID']])
@@ -1365,6 +1356,8 @@ class Embryo:
                 most of the computed information for gene localization of
                 the tissue `t_id`. The main value is in the column `Distance_to_reg`
         """
+        if self.all_genes is None:
+            self.all_genes = all_genes
         cells = list(self.all_cells)
         pos_3D = [self.pos_3D[c] for c in cells]
         if self.full_GG is None:
@@ -1372,7 +1365,7 @@ class Embryo:
                                                     data_struct='adj-mat')
 
         if self.gene_expr_th is None:
-            self.gene_expr_th = self.compute_expr_thresholds(all_genes=all_genes)
+            self.gene_expr_th = self.compute_expr_thresholds()
 
         if self.whole_tissue_nb_N is None:
             self.whole_tissue_nb_N = {}
@@ -1385,14 +1378,12 @@ class Embryo:
 
         for t in tissues_to_process:
             if not t in self.diff_expressed_3D:
-                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol,
-                                                             all_genes=all_genes)
+                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
 
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
         else:
             self.tissues_diff_expre_processed.extend(tissues_to_process)
-        self.all_genes = all_genes
 
         return self.diff_expressed_3D
 
