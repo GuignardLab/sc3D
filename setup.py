@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 # Fields marked as "Optional" may be commented out.
 
 setup(
-    name='sc3D',
+    name='sc-3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
     version='0.1.2',
