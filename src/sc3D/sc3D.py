@@ -134,7 +134,7 @@ class Embryo:
             if 'feature_name' in data.raw.var:
                 data.raw.var.set_index('feature_name', inplace=True)
             else:
-                data.raw.var.set_index(data.var['feature_name'],
+                data.raw.var.set_index(data.var.index,
                                        inplace=True)
         if genes_of_interest is None:
             genes_of_interest = []
