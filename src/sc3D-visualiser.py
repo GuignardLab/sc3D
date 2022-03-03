@@ -54,7 +54,7 @@ def display_embryo(viewer, embryo):
                                metadata={'gene': None}, shown=shown)
 
     @magicgui(call_button='Select tissues',
-              tissues={"widget_type": "Select",
+              tissues={'widget_type': 'Select',
                        'choices': [embryo.corres_tissue.get(t, '')
                                    for t in embryo.all_tissues],
                        'value': [embryo.corres_tissue.get(t, '')
@@ -74,7 +74,7 @@ def display_embryo(viewer, embryo):
             show_gene(viewer, points.metadata['gene'])
 
     @magicgui(call_button='Apply colormap',
-              cmap={'label': 'Choose cmap',
+              cmap={'label': 'colormap',
                     'choices': ALL_COLORMAPS.keys()})
     def apply_cmap(viewer: Viewer, cmap: str):
         points = viewer.layers.selection.active
@@ -106,7 +106,7 @@ def display_embryo(viewer, embryo):
         points.face_contrast_limits = (0, 1)
         points.refresh()
 
-    @magicgui(call_button='Show tissue')
+    @magicgui(call_button='Color according to cell types')
     def show_tissues(viewer: Viewer):
         points = viewer.layers.selection.active
         if points is None:
@@ -119,23 +119,23 @@ def display_embryo(viewer, embryo):
         points.refresh()
 
     @magicgui(call_button='Adjust contrast',
-              min_c={'widget_type': 'FloatSlider', 'max': 1, 'min': 0, 'label': ''},
-              max_c={'widget_type': 'FloatSlider', 'max': 1, 'min': 0, 'label': ''})
-    def adj_int(viewer: Viewer, min_c: float=0, max_c: float=1):
+              min={'widget_type': 'FloatSlider', 'max': 1, 'min': 0, 'label': ''},
+              max={'widget_type': 'FloatSlider', 'max': 1, 'min': 0, 'label': ''})
+    def adj_int(viewer: Viewer, min: float=0, max: float=1):
         points = viewer.layers.selection.active
         if points is None:
             return
         if points.face_color_mode.upper() != 'COLORMAP':
             return
-        if max_c < min_c:
-            max_c, min_c = min_c, max_c
-        points.face_contrast_limits = (min_c, max_c)
+        if max < min:
+            max, min = min, max
+        points.face_contrast_limits = (min, max)
         points.refresh()
 
     @magicgui(call_button='Threshold cells',
-              min_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''},
-              max_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''})
-    def threshold(viewer: Viewer, min_c: float=0, max_c: float=1):
+              min={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''},
+              max={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''})
+    def threshold(viewer: Viewer, min: float=0, max: float=1):
         points = viewer.layers.selection.active
         if points is None:
             return
@@ -143,7 +143,7 @@ def display_embryo(viewer, embryo):
             points.features['current_view'] = points.shown.copy()
 
         points.shown = (points.features['current_view']&
-                        (min_c<=points.features['gene'])&(points.features['gene']<=max_c))
+                        (min<=points.features['gene'])&(points.features['gene']<=max))
         points.refresh()
 
     viewer.window.add_dock_widget(select_tissues)
@@ -159,11 +159,11 @@ def loading_embryo():
     @magicgui(call_button='Load data',
               data_path={'label': 'h5ad file',
                          'widget_type': 'FileEdit',
-                         'value': Path('data/registered.h5ad'),#.home(),
+                         'value': Path('.').absolute(),#.home(),
                          'filter': '*.h5ad'},
               tissue_names={'label': 'Tissue name',
                             'widget_type': 'FileEdit',
-                            'value': Path('data/corresptissues.json'),#.home(),
+                            'value': Path('.').absolute(),#.home(),
                             'filter': '*.json'})
     def load_file(viewer: Viewer, data_path: str, tissue_names: str) -> Embryo:
         with open(tissue_names) as f:
