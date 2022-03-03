@@ -28,7 +28,7 @@ The dataset necessary to run the tests and look at the results can be downloaded
 
 - setup.py: Setup file to install the library
 
-- src/sc3D-visualiser.py: the script to run the visualiser (for specifics about the visualiser, please look directly [there](Visualiser))
+- src/sc3D-visualiser.py: the script to run the visualiser (for specifics about the visualiser, please look directly [there](#Visualiser))
 
 ## Installation
 
