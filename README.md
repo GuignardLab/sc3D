@@ -26,16 +26,16 @@ The dataset necessary to run the tests and look at the results can be downloaded
 
 - Spatial-differential-expression.ipynb: a jupyter notebook with some examples on how to perform the spatial differential expression
 
-- spec-file.txt: File containing all the libraries necessary to run sc3D
+- setup.py: Setup file to install the library
+
+- src/sc3D-visualiser.py: the script to run the visualiser (for specifics about the visualiser, please look directly [there](Visualiser))
 
 ## Installation
-
-The current version of sc3D has only been tested with the Python 3.8  (though it is not working with Python>=3.9 because of the open3d dependency)
 
 We strongly advise to use virtual environments to install this package. For example:
 
 ```shell
-conda create -n sc-3D python==3.8
+conda create -n sc-3D
 conda activate sc-3D
 ```
 
@@ -110,4 +110,71 @@ jupyter notebook
 ```
 The notebooks should be self content.
 
-Note that the test dataset is not included in this repository put can be downloaded from there:
+Note that the test dataset is not included in this repository put can be downloaded from [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private).
+
+# Visualiser
+
+Quick start (from scratch):
+## Installation
+### 1. Installing miniconda
+In order to help a smooth installation, one can use miniconda (that is what we do).
+
+You can check [there](https://docs.conda.io/en/latest/miniconda.html) to see how to install miniconda.
+
+In a nutshell, from a terminal, the following lines could work for MacOs:
+```shell
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh > Miniconda3-latest-MacOSX-x86_64.sh
+bash Miniconda3-latest-MacOSX-x86_64.sh
+```
+and then answering the required questions.
+
+Similarly, for Linux one could install miniconda by running the following commands:
+```shell
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh > Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+```
+and then answering the required questions.
+
+### 2. Installing the visualiser
+Once miniconda is installed one can install the visualiser.
+
+To do so, it is necessary to either download or clone the repository from GitHub (https://github.com/GuignardLab/sc3D to download, there is the green "Code" button).
+
+Once downloaded, one can access the said folder from a terminal:
+```shell
+cd path/to/sc3D
+```
+
+Once there it is probably better to create a virtual environment thanks to miniconda:
+```shell
+conda create -n sc3D python=3.9
+```
+Then activate it:
+```shell
+conda activate sc3D
+```
+
+From then you want to install `pip`:
+```shell
+conda install pip
+```
+
+and finally install the library and the script:
+```shell
+pip install .
+```
+
+Now, the visualiser is installed, you **should** close your terminal (even if you plan on using the visualiser directly, you will need to open a new terminal anyway).
+
+### 3. Running the visualiser
+
+To run the visualiser, you want to
+- start a new terminal
+- activate your conda environement: `conda activate sc3D`
+- start the visualiser by typing: `sc3D-visualiser.py` (from anywhere in a terminal)
+
+Then you can load the dataset and play with it.
+The `h5ad` file can be find [there].
+The `Tissue name` file can be find in `data/corresptissues.json`.
+
+**"Have fun"**
