@@ -139,8 +139,12 @@ and then answering the required questions.
 Once miniconda is installed one can install the visualiser.
 
 To do so, it is necessary to either download or clone the repository from GitHub (https://github.com/GuignardLab/sc3D to download, there is the green "Code" button).
+To clone the repository one can do it the following way:
+```shell
+git clone https://github.com/GuignardLab/sc3D.git
+```
 
-Once downloaded, one can access the said folder from a terminal:
+Once downloaded or cloned, one can access the said folder from a terminal:
 ```shell
 cd path/to/sc3D
 ```
@@ -159,7 +163,7 @@ From then you want to install `pip`:
 conda install pip
 ```
 
-and finally install the library and the script:
+and finally install the library and the script (still from the folder sc3D):
 ```shell
 pip install .
 ```
