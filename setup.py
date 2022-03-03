@@ -15,7 +15,7 @@ setup(
     name='sc-3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
-    version='0.1.0',
+    version='0.1.1',
     description='Array alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -28,8 +28,9 @@ setup(
     ],
     packages=['sc3D'],
     package_dir= { '' : 'src' },
+    scripts=['src/sc3D-visualiser.py'],
 
     install_requires=['scipy', 'numpy', 'matplotlib', 'pandas',
                       'seaborn', 'scikit-learn', 'open3d',
-                      'anndata', 'transformations'],
+                      'anndata', 'transformations', 'napari', 'PyQt5'],
 )

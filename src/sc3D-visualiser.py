@@ -40,7 +40,8 @@ color_map_tissues = {
     41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]}
 
 def display_embryo(viewer, embryo):
-    tissues_to_plot = embryo.all_tissues
+    # tissues_to_plot = embryo.all_tissues
+    tissues_to_plot = [18, 21, 30, 31, 34]
     cells = sorted(embryo.all_cells)
     positions = [embryo.pos_3D[c] for c in cells]
     shown = [embryo.tissue[c] in tissues_to_plot for c in cells]
@@ -66,6 +67,7 @@ def display_embryo(viewer, embryo):
         tissues_to_plot = [tissue_to_num[t] for t in tissues]
         shown = [embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
         points.shown = shown
+        points.features['current_view'] = shown
         if points.metadata['gene'] is None:
             show_tissues(viewer)
         else:
@@ -90,10 +92,10 @@ def display_embryo(viewer, embryo):
               gene={'label': 'Choose gene'})
     def show_gene(viewer: Viewer, gene: str):
         points = viewer.layers.selection.active
-        if points is None or not gene in embryo.anndata.var_names:
+        if points is None or not gene in embryo.anndata.raw.var_names:
             return
         if gene != points.metadata['gene']:
-            colors = embryo.anndata[:, gene].X[:, 0].toarray()
+            colors = embryo.anndata.raw[:, gene].X.toarray()[:, 0]
             min_c, max_c = colors[points.shown].min(), colors[points.shown].max()
             colors = (colors-min_c)/(max_c-min_c)
             points.features['gene'] = colors
@@ -133,19 +135,23 @@ def display_embryo(viewer, embryo):
     @magicgui(call_button='Threshold cells',
               min_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''},
               max_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0, 'label': ''})
-    def threshold(viewer: Viewer, min_c: float=0, max_c: float=1, reset: bool=True):
+    def threshold(viewer: Viewer, min_c: float=0, max_c: float=1):
         points = viewer.layers.selection.active
         if points is None:
             return
-        points.shown = (min_c<=points.features['gene'])&(points.features['gene']<=max_c)
+        if not hasattr(points.features, 'current_view'):
+            points.features['current_view'] = points.shown.copy()
+
+        points.shown = (points.features['current_view']&
+                        (min_c<=points.features['gene'])&(points.features['gene']<=max_c))
         points.refresh()
 
     viewer.window.add_dock_widget(select_tissues)
+    viewer.window.add_dock_widget(show_tissues)
     viewer.window.add_dock_widget(show_gene)
     viewer.window.add_dock_widget(threshold)
     viewer.window.add_dock_widget(adj_int)
     viewer.window.add_dock_widget(apply_cmap)
-    viewer.window.add_dock_widget(show_tissues)
 
     return viewer
 
@@ -153,11 +159,11 @@ def loading_embryo():
     @magicgui(call_button='Load data',
               data_path={'label': 'h5ad file',
                          'widget_type': 'FileEdit',
-                         'value': Path('../out/all.h5ad'),#.home(),
+                         'value': Path('data/registered.h5ad'),#.home(),
                          'filter': '*.h5ad'},
               tissue_names={'label': 'Tissue name',
                             'widget_type': 'FileEdit',
-                            'value': Path('../data/corresptissues.json'),#.home(),
+                            'value': Path('data/corresptissues.json'),#.home(),
                             'filter': '*.json'})
     def load_file(viewer: Viewer, data_path: str, tissue_names: str) -> Embryo:
         with open(tissue_names) as f:
