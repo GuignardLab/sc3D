@@ -104,22 +104,30 @@ class Embryo:
                 differentially expressed genes
         """
         from anndata import read
-        data = read(path)
-        data_kept = set()
+        data = read(str(path))
+        # data_kept = set()
         if tissues_to_ignore is not None:
             data = data[~(data.obs['predicted.id'].astype(int).isin(tissues_to_ignore))]
-            data_kept.update(np.where(~(data.obs['predicted.id'].isin(tissues_to_ignore)))[0])
-        if self.nb_CS_begin_ignore is not None or self.nb_CS_end_ignore is not None:
+            # data_kept.update(np.where(~(data.obs['predicted.id'].isin(tissues_to_ignore)))[0])
+        if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
             orig = sorted(set(data.obs['orig.ident']))
             cs_to_remove = orig[:self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore:]
             data = data[~(data.obs['orig.ident'].isin(cs_to_remove))]
-            data_kept.update(np.where(~(data.obs['orig.ident'].isin(cs_to_remove)))[0])
-        data_kept = np.array(list(data_kept))
+            # data_kept.update(np.where(~(data.obs['orig.ident'].isin(cs_to_remove)))[0])
+        # if (tissues_to_ignore is None and
+        #     self.nb_CS_begin_ignore == 0 and
+        #     self.nb_CS_end_ignore == 0):
+        #     data_kept = np.arange(len(data.obs))
+        # else:
+        #     data_kept = np.array(list(data_kept))
         ids = range(len(data))
         self.all_cells = list(ids)
         self.cell_names = dict(zip(ids,
                                    map(lambda x, y: str.split(x, y)[-1],
                                        data.obs_names, '_'*len(data))))
+        if 'X_spatial_registered' in data.obsm:
+            self.pos_3D = dict(zip(ids,
+                                   data.obsm['X_spatial_registered']))
         self.pos = dict(zip(ids,
                             data.obsm['X_spatial']*xy_resolution))
         self.tissue = dict(zip(ids,
@@ -1565,6 +1573,146 @@ class Embryo:
         order = data_plot.sort_values('Localization score', ascending=False)[:nb]
         return order
 
+    def display_embryo(self, *, tissues_to_plot=None, color='tissue',
+                    cmap='viridis', color_map_tissues=None):
+        import napari
+        from magicgui import magicgui
+        from napari import Viewer
+        from napari.utils.colormaps import ALL_COLORMAPS
+        if color_map_tissues is None:
+            color_map_tissues = {5: [0.7411764705882353, 0.803921568627451, 1.0],
+                6: [0.19607843137254902, 0.35294117647058826, 0.6078431372549019],
+                7: [0.996078431372549, 0.6862745098039216, 0.08627450980392157],
+                9: [0.7686274509803922, 0.27058823529411763, 0.10980392156862745],
+                10: [0.10980392156862745, 1.0, 0.807843137254902],
+                12: [0.7529411764705882, 0.4588235294117647, 0.6509803921568628],
+                13: [0.9647058823529412, 0.13333333333333333, 0.1803921568627451],
+                14: [0.7411764705882353, 0.43529411764705883, 0.6705882352941176],
+                15: [0.9686274509803922, 0.8823529411764706, 0.6274509803921569],
+                16: [1.0, 0.9803921568627451, 0.9803921568627451],
+                18: [0.47058823529411764, 0.16470588235294117, 0.7137254901960784],
+                20: [0.5019607843137255, 0.5019607843137255, 0.5019607843137255],
+                21: [0.9803921568627451, 0.0, 0.5294117647058824],
+                22: [0.5098039215686274, 0.1803921568627451, 0.10980392156862745],
+                23: [0.5215686274509804, 0.4, 0.050980392156862744],
+                24: [0.803921568627451, 0.1607843137254902, 0.5647058823529412],
+                27: [0.6588235294117647, 0.6588235294117647, 0.6588235294117647],
+                29: [0.0, 0.0, 0.5450980392156862],
+                30: [0.5450980392156862, 0.2784313725490196, 0.36470588235294116],
+                31: [1.0, 0.7568627450980392, 0.1450980392156863],
+                32: [0.8705882352941177, 0.6274509803921569, 0.9921568627450981],
+                33: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
+                34: [0.9725490196078431, 0.6313725490196078, 0.6235294117647059],
+                35: [0.7098039215686275, 0.9372549019607843, 0.7098039215686275],
+                36: [0.1803921568627451, 0.8509803921568627, 1.0],
+                39: [0.10980392156862745, 0.5137254901960784, 0.33725490196078434],
+                40: [1.0, 0.6470588235294118, 0.30980392156862746],
+                41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]}
+        if tissues_to_plot is None:
+            tissues_to_plot = self.all_tissues
+        cells = sorted([c for c in self.all_cells if self.tissue[c] in tissues_to_plot])
+        positions = [self.pos_3D[c] for c in cells]
+
+        tissue_to_num = {v:k for k, v in self.corres_tissue.items()}
+        @magicgui(call_button='Select tissues',
+                  tissues={"widget_type": "Select",
+                           'choices': [self.corres_tissue.get(t, '')
+                                       for t in self.all_tissues],
+                           'value': [self.corres_tissue.get(t, '')
+                                     for t in tissues_to_plot]})
+        def select_tissues(viewer: Viewer, tissues: str):
+            points = viewer.layers.selection.active
+            tissues_to_plot = [tissue_to_num[t] for t in tissues]
+            cells = sorted([c for c in self.all_cells if self.tissue[c] in tissues_to_plot])
+            positions = [self.pos_3D[c] for c in cells]
+            points.data = positions
+            points.refresh()
+            if current_gene is None:
+                show_tissues(viewer)
+            else:
+                show_gene(viewer, current_gene)
+
+        @magicgui(call_button='Apply colormap',
+                  cmap={'label': 'Choose cmap',
+                        'choices': ALL_COLORMAPS.keys()})
+        def apply_cmap(viewer: Viewer, cmap: str):
+            points = viewer.layers.selection.active
+            if points is None:
+                return
+            if len(points.properties) == 0:
+                return
+            if points.face_color_mode.upper() != 'COLORMAP':
+                points.face_color = 'gene'
+                points.face_color_mode = 'colormap'
+            points.face_colormap = cmap
+            points.refresh()
+
+        @magicgui(call_button='Show gene',
+                  gene={'label': 'Choose gene'})
+        def show_gene(viewer: Viewer, gene: str):
+            points = viewer.layers.selection.active
+            if points is None:
+                return
+            current_gene = gene
+            colors = self.anndata[cells, gene].X[:, 0]
+            min_c, max_c = colors.min(), colors.max()
+            colors = (colors-min_c)/(max_c-min_c)
+            points.properties['gene'] = colors
+            # if points.face_color_mode.upper() != 'COLORMAP':
+            points.face_color = 'gene'
+            points.face_color_mode = 'colormap'
+            points.face_contrast_limits = (0, 1)
+            points.refresh()
+
+        @magicgui(call_button='Show tissue')
+        def show_tissues(viewer: Viewer):
+            points = viewer.layers.selection.active
+            if points is None:
+                return
+            if points.face_color_mode.upper() == 'COLORMAP':
+                points.face_color = [color_map_tissues[self.tissue[c]] for c in cells]
+                points.face_color_mode = 'direct'
+            points.refresh()
+
+        @magicgui(call_button='Adjust intensity',
+                  min_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0},
+                  max_c={"widget_type": "FloatSlider", 'max': 1, 'min': 0})
+        def adj_int(viewer: Viewer, min_c: float=0, max_c: float=1):
+            points = viewer.layers.selection.active
+            if points is None:
+                return
+            if points.face_color_mode.upper() != 'COLORMAP':
+                return
+            points.face_contrast_limits = (min_c, max_c)
+            points.refresh()
+
+        if 'tissue' in color.lower():
+            colors_rgb = [color_map_tissues[self.tissue[c]] for c in cells]
+            properties = {'gene': [0 for _ in cells]}
+            viewer = napari.view_points(positions, face_color=colors_rgb,
+                                        properties=properties)
+        else:
+            colors = self.anndata[cells, color].X[:, 0]
+            current_gene = color
+            properties = {'gene': colors}
+            viewer = napari.view_points(positions, face_color='gene',
+                                        properties=properties, face_colormap=cmap)
+
+
+        viewer.window.add_dock_widget(show_gene)
+        show_gene.viewer.bind(viewer)
+        viewer.window.add_dock_widget(adj_int)
+        adj_int.viewer.bind(viewer)
+        viewer.window.add_dock_widget(apply_cmap)
+        apply_cmap.viewer.bind(viewer)
+        viewer.window.add_dock_widget(show_tissues)
+        show_tissues.viewer.bind(viewer)
+        viewer.window.add_dock_widget(select_tissues)
+        select_tissues.viewer.bind(viewer)
+
+        return viewer
+
+
     def __init__(self, data_path, tissues_to_ignore=None,
                  corres_tissue=None, tissue_weight=None,
                  xy_resolution=1, genes_of_interest=None,
@@ -1635,7 +1783,8 @@ class Embryo:
         self.diff_expressed_3D = {}
         self.tissues_diff_expre_processed = None
 
-        if data_path.split('.')[-1] == 'h5ad':
+
+        if str(data_path).split('.')[-1] == 'h5ad':
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
                               store_anndata=store_anndata)
