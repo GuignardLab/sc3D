@@ -31,6 +31,6 @@ setup(
     scripts=['src/sc3D-visualiser.py'],
 
     install_requires=['scipy', 'numpy', 'matplotlib', 'pandas',
-                      'seaborn', 'scikit-learn', 'open3d',
-                      'anndata', 'transformations', 'napari', 'PyQt5'],
+                      'seaborn', 'scikit-learn', 'anndata',
+                      'transformations', 'napari', 'PyQt5'],
 )

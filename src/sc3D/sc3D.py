@@ -18,10 +18,8 @@ from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy import stats
 import seaborn as sns
 
-from sklearn.decomposition import PCA
 from sklearn import linear_model
 
-import open3d as o3d
 import anndata
 import transformations as tr
 
@@ -103,8 +101,7 @@ class Embryo:
                 matrix. The matrix is necessary when looking for
                 differentially expressed genes
         """
-        from anndata import read
-        data = read(str(path))
+        data = anndata.read(str(path))
         # data_kept = set()
         if tissues_to_ignore is not None:
             data = data[~(data.obs['predicted.id'].astype(int).isin(tissues_to_ignore))]
@@ -914,69 +911,6 @@ class Embryo:
             fig.savefig(output_path)
         return points_to_plot
 
-    def ply_slice(self, file_name, angle, color_map, rot_orig=[0, 0, 1],
-                  origin=[0, 0, 0], thickness=30, tissues=None,
-                  tissues_colored=None, angle_unit='degree',
-                  gene=None, nb_interp=5):
-        """
-        Build a ply file containing a slice
-
-        Args:
-            file_name (str): path to the output ply file
-            angle (float): angle of the rotation of the slice
-            color_map (matplotlib.cmap): color map that will be applied
-            rot_origin ([int, int, int]): 3D vector of the normal of the
-                rotation plan. If [0, 0, 1] is given the rotation will be
-                around the z axis
-            origin ([int, int, int]): coordinates of center of the rotation
-            thickness (float): thickness of the slice
-            tissues ([t_id, ]): list of tissue ids to plot
-            angle_unit (str): if `'degree'` the angle is treated as degrees.
-                Otherwise it is treated a radii
-            nb_interp (int): number of pucks to interpolate in between
-                existing pucks
-            gene (str): gene name to interpolate
-        Returns:
-            points_to_plot (n x 2 ndarray): list of the positions of the points
-                that have been plotted
-        """
-        if tissues is None:
-            tissues = self.all_tissues
-        if tissues_colored is None:
-            tissues = self.all_tissues
-        if angle_unit == 'degree':
-            angle = np.deg2rad(angle)
-        x_angle, y_angle, z_angle = angle
-        rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
-        rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
-        rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
-        rot_composed = rot_x@rot_y@rot_z
-        new_axis = (np.hstack([rot_orig, 1])@rot_composed)[:-1]
-        equation = lambda pos: np.sum(new_axis*pos, axis=1)-origin@new_axis
-        points, color, *_ = self.produce_em(nb_interp, tissues, gene=gene)
-        points = np.array(points)
-        color = np.array(color)
-        plan = (np.abs(equation(points))<thickness)
-        points_to_plot = points[plan]
-        color_to_plot = color[plan]
-        if gene is None:
-            mapping = np.array([[.8, .8, .8] for t in range(max(color_map)+1)])
-            for t in tissues_colored:
-                mapping[t] = color_map.get(t, [.8, .8, .8])
-        else:
-            min_v = np.percentile(color_to_plot, 1)
-            max_v = np.percentile(color_to_plot, 99)
-            color_to_plot = plt.cm.viridis((color_to_plot - min_v)/(max_v - min_v))[:,:-1]
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points_to_plot)
-        if gene is None:
-            pcd.colors = o3d.utility.Vector3dVector(mapping[color_to_plot])
-        else:
-            pcd.colors = o3d.utility.Vector3dVector(color_to_plot)
-        o3d.io.write_point_cloud(file_name, pcd)
-
-        return points_to_plot
-
     def anndata_slice(self, file_name, angle, gene_list, rot_orig=None,
                       origin=None, thickness=30, tissues=None,
                       angle_unit='degree'):
@@ -1132,58 +1066,6 @@ class Embryo:
         if gene_list is not None:
             return points, colors, gene_expr
         return points, colors
-
-    def get_differential_genes_main_axis(self, t,
-                                         plot=True,
-                                         th_diff=1.2,
-                                         th_bins=1,
-                                         nb_bins=5,
-                                         th_expr=.5,
-                                         exclusion_func=None):
-        """
-        Compute some differential gene expression along the main axis
-        of a given tissue. Deprecated
-        """
-        pca = PCA(n_components=3)
-        if exclusion_func is not None:
-            cells = np.array([c for c in self.all_cells if self.tissue[c]==t if self.final[c][0]<0])
-        else:
-            cells = np.array([c for c in self.all_cells if self.tissue[c]==t])
-        pos = np.array([list(self.final[c]) + [self.z_pos[c]] for c in cells])
-        new_pos = pca.fit_transform(pos)
-        order = [np.argsort(new_pos[:,0])]
-        order.append(np.argsort(new_pos[:,1]))
-        order.append(np.argsort(new_pos[:,2]))
-        data = self.anndata.copy()
-        expressing_genes = th_expr<np.mean(data[cells,:].X, axis=0)
-        if plot:
-            plot_data = {}
-            plot_data['mean'] = np.mean(data[cells,:].X, axis=0)
-            plot_data['std'] = np.std(data[cells,:].X, axis=0)
-            sns.displot(plot_data, x='mean', y='std', binwidth=(.5, .25), cbar=True)
-        data.X[data.X<th_expr]=np.nan
-        gene_names = set()
-        gene_names_axe = {}
-        for axe in range(3):
-            pos_compressed = new_pos[:,axe]
-            bins = np.linspace(np.percentile(pos_compressed, 1),
-                               np.percentile(pos_compressed, 99),
-                               nb_bins+1)
-            bin_cells = [cells[(bins[i]<pos_compressed) & (pos_compressed<bins[i+1])] for i in range(nb_bins)]
-            val_bin = []
-            for v in bin_cells:
-                mean = np.nanmean(data[v,:].X, axis=0).toarray()
-                mean[np.isnan(mean)] = 0
-                val_bin.append(mean)
-            val_bin = np.array(val_bin).T
-            val_bin[np.isnan(val_bin)]=0
-            expr_diff = np.array([np.abs(val_bin[:,c1]-val_bin[:,c2])
-                                  for c1, c2 in list(combinations(range(nb_bins), 2))])
-
-            candidate_genes = np.where((th_bins<np.sum(th_diff<expr_diff, axis=0))&expressing_genes)[0]
-            gene_names.update(data.var_names[candidate_genes])
-            gene_names_axe[axe] = data.var_names[candidate_genes]
-        return gene_names, gene_names_axe
 
     @staticmethod
     def threshold_otsu(values, nbins=256):
