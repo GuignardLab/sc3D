@@ -27,8 +27,8 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     packages=['sc3D'],
-    package_dir= { '' : 'src' },
-    scripts=['src/sc3D-visualiser.py'],
+    package_dir={ '' : 'src' },
+    scripts=['src/sc3D-visualiser'],
 
     install_requires=['scipy', 'numpy', 'matplotlib', 'pandas',
                       'seaborn', 'scikit-learn', 'anndata',
