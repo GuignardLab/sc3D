@@ -31,18 +31,14 @@ class Embryo:
     for other kinds of datasets.
     """
 
-    def set_zpos(self, z_space=30.):
+    def set_zpos(self):
         """
         Creates the dictionary containing
         the z position of the different beads
-
-        Args:
-            z_space (float): physical space between pucks
         """
-        self.z_space = z_space
         self.z_pos = {}
         self.pos_3D = {}
-        cs_conversion = {b: a*z_space for a, b in enumerate(self.all_cover_slips)}
+        cs_conversion = {b: a*self.z_space for a, b in enumerate(self.all_cover_slips)}
         for c in self.all_cells:
             self.z_pos[c] = cs_conversion[self.cover_slip[c]]
             x, y = self.pos[c]
@@ -102,15 +98,13 @@ class Embryo:
                 differentially expressed genes
         """
         data = anndata.read(str(path))
-        # data_kept = set()
         if tissues_to_ignore is not None:
             data = data[~(data.obs['predicted.id'].astype(int).isin(tissues_to_ignore))]
-            # data_kept.update(np.where(~(data.obs['predicted.id'].isin(tissues_to_ignore)))[0])
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
             orig = sorted(set(data.obs['orig.ident']))
             cs_to_remove = orig[:self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore:]
             data = data[~(data.obs['orig.ident'].isin(cs_to_remove))]
-            # data_kept.update(np.where(~(data.obs['orig.ident'].isin(cs_to_remove)))[0])
+        data.raw = data.raw.to_adata()
         # if (tissues_to_ignore is None and
         #     self.nb_CS_begin_ignore == 0 and
         #     self.nb_CS_end_ignore == 0):
@@ -603,13 +597,16 @@ class Embryo:
             proba0 = gmm.predict_proba(D.reshape(-1, 1))[:, order[0,0]]
             proba1 = gmm.predict_proba(D.reshape(-1, 1))[:, order[1,0]]
             self.filtered_cells.update(cells_final[(th<proba0)|(th<proba1)])
-        self.cells.intersection_update(self.filtered_cells)
+        # self.cells.intersection_update(self.filtered_cells)
         self.all_cells = set(self.all_cells).intersection(self.filtered_cells)
         self.pos = {k:self.pos[k] for k in self.filtered_cells}
         self.tissue = {k:self.tissue[k] for k in self.filtered_cells}
         self.cover_slip = {k:self.cover_slip[k] for k in self.filtered_cells}
         self.cell_names = {k:self.cell_names[k] for k in self.filtered_cells}
         self.gene_expression = {k:self.gene_expression[k] for k in self.filtered_cells}
+        l_all = list(self.all_cells)
+        self.anndata = self.anndata[l_all]
+        self.anndata.raw = self.anndata.raw.to_adata()
         for t, c in self.cells_from_cover_slip.items():
             c.intersection_update(self.filtered_cells)
         for t, c in self.cells_from_tissue.items():
@@ -1599,7 +1596,7 @@ class Embryo:
                  corres_tissue=None, tissue_weight=None,
                  xy_resolution=1, genes_of_interest=None,
                  nb_CS_begin_ignore=0, nb_CS_end_ignore=0,
-                 store_anndata=False):
+                 store_anndata=False, z_space=30.):
         """
         Initialize an spatial single cell embryo
 
@@ -1637,7 +1634,7 @@ class Embryo:
         self.tissues_to_ignore = [] if tissues_to_ignore is None else tissues_to_ignore
         self.corres_tissue = {} if corres_tissue is None else corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
-        self.z_space = None
+        self.z_space = z_space
         self.z_pos = None
         self.all_cells = None
         self.cell_names = None
