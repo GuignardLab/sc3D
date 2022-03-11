@@ -259,7 +259,7 @@ def registering(viewer: Viewer, register):
                                 ('Threshold bellow which the beads will be considered noise.\n'
                                  'Value between 0 (all beads taken) and 1 (almost no beads taken)')
                                })
-    def register(data_path, tissue_names, tissues, nb_begin, nb_end, tissue_weight,
+    def register(data_path, tissue_names, tissues_to_ignore, nb_begin, nb_end, tissue_weight,
                  xy_resolution, z_spacing, th_d, outlier_threshold):
         if isinstance(tissues_to_ignore, Iterable):
             tissues_to_ignore = list(tissues_to_ignore)
