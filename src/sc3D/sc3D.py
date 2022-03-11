@@ -512,7 +512,7 @@ class Embryo:
 
         return final_GG
 
-    def smooth_data(self):
+    def smooth_data(self, inplace=True):
         """
         Smooth the gene expression according to the spatial neighborhood relationship.
         The spatial neighborhood relationship is computed as the Gabriel graph.
@@ -521,23 +521,35 @@ class Embryo:
             `s_c = \frac{\sum_{n_i \in N_c} ||n_i - c||*g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}`
         where `||n_i - c||` is the distance between `n_i` and `c` and g_{n_i} is the measured 
         expression intensity of the gene `g` in the cell `n_i`.
-        The result is stored in embryo.anndata.raw in place of the previous raw data.
+        The result is stored in `self.anndata.raw` in place of the previous raw data if required.
+        Otherwise, the smoothed matrix is returned.
 
         :WARNING: This function can be high CPU and memory taxing since it is multiplying
             the neighborhood adjacency matrix (nb_beadxnb_beads) by the gene expression matrix
             (nb_beadsxnb_genes)
+
+        Args:
+            inplace (bool): whether or not to replace the current data with the smoothed one
+                If `True`, the data will be saved in place of self.anndata.raw otherwise the
+                new smoothed matrix will be returned. Default: `True`
+
+        Returns:
+            
         """
         ids, pos = list(zip(*self.pos_3D.items()))
         GG = self.build_gabriel_graph(ids, pos, 'adj-mat', dist=True)
-        GG = GG.astype(np.float32).toarray() # Matrix multiplication optimisation
-        gene_expr = embryo.anndata.raw.X.toarray()
-        prod = np.dot(GG, gene_expr)
-        nb_N = GG.sum(axis = 1)
-        prod_n = prod/nb_N.reshape(-1, 1)
-        prod_sp = sp.sparse.csr_array(prod_n)
-        tmp_ad = embryo.anndata.raw.to_adata()
-        tmp_ad.X = prod_sp
-        embryo.anndata.raw = tmp_ad
+        GG = GG.astype(np.float32).toarray() # Matrix multiplication "optimisation"
+        gene_expr = self.anndata.raw.X.toarray()
+        product = np.dot(GG, gene_expr)
+        dist_sum = GG.sum(axis = 1)
+        product_n = product/dist_sum.reshape(-1, 1)
+        product_sparse = sp.sparse.csr_array(product_n)
+        tmp_raw = self.anndata.raw.to_adata()
+        tmp_raw.X = product_sparse
+        if inplace:
+            self.anndata.raw = tmp_raw
+        else:
+            return tmp_raw
 
 
     def plot_coverslip(self, cs, pos='pos', ax=None,
