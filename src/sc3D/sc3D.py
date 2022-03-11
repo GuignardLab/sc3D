@@ -116,11 +116,10 @@ class Embryo:
         self.cell_names = dict(zip(ids,
                                    map(lambda x, y: str.split(x, y)[-1],
                                        data.obs_names, '_'*len(data))))
-        if 'X_spatial_registered' in data.obsm:
-            self.pos_3D = dict(zip(ids,
-                                   data.obsm['X_spatial_registered']))
         self.pos = dict(zip(ids,
                             data.obsm['X_spatial']*xy_resolution))
+
+
         self.tissue = dict(zip(ids,
                                data.obs['predicted.id'].astype(int)))
         cs = list(map(lambda x, y: int(str.split(x, y)[1]),
@@ -128,6 +127,7 @@ class Embryo:
                       '_'*len(data.obs['orig.ident'])))
         self.cover_slip = dict(zip(ids, cs))
 
+            
         if 'feature_name' in data.var:
             data.var.set_index('feature_name', inplace=True)
             if 'feature_name' in data.raw.var:
@@ -155,6 +155,11 @@ class Embryo:
         self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
+        if 'X_spatial_registered' in data.obsm:
+            self.pos_3D = dict(zip(ids,
+                                   data.obsm['X_spatial_registered']))
+        else:
+            self.set_zpos()
 
     @staticmethod
     def rigid_transform_2D(A, B):
@@ -680,8 +685,6 @@ class Embryo:
             multicore (bool): useless at the time being. Maybe one day ...
             genes ([str, ]): gene names that will be interpolated
         """
-        if self.z_pos is None:
-            self.set_zpos()
         disapear_bounds = (.1, .5, .9)
         if cs is not None:
             cs_to_treat = cs
