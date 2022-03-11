@@ -445,7 +445,7 @@ class Embryo:
         return M
 
     @staticmethod
-    def build_gabriel_graph(node_ids, pos, data_struct='adj-dict'):
+    def build_gabriel_graph(node_ids, pos, data_struct='adj-dict', dist=False):
         """
         Build the gabriel graph of a set of nodes with
         associtated positions.
@@ -459,6 +459,7 @@ class Embryo:
                 'adj-mat' are supported.
                 'adj-dict': Adjacency dictionary
                 'adj-mat' : Adjacency matrix
+            dist (bool)
         Returns:
             final_GG (dict id: set([ids, ])): the gabriel graph as
                 an adjacency list, a dictionary that maps node ids
@@ -490,19 +491,54 @@ class Embryo:
                 final_GG[node_ids[e1]] = {node_ids[ni] for ni in neighbs[distances<=5*np.median(distances)]}
 
         elif data_struct.lower() == 'adj-mat':
-            X, Y = [], []
+            X, Y, val = [], [], []
             for e1, neighbs in delaunay_graph.items():
                 for ni in [n for n in neighbs if e1<n]:
-                    if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i])<np.linalg.norm(pos[ni] - pos[e1])/2
+                    D = np.linalg.norm(pos[e1] - pos[ni])
+                    if not any(np.linalg.norm((pos[ni] + pos[e1])/2 - pos[i]) < D/2
                                for i in neighbs.intersection(delaunay_graph[ni])):
                         X.append(node_ids[e1])
                         Y.append(node_ids[ni])
                         X.append(node_ids[ni])
                         Y.append(node_ids[e1])
-            final_GG = sp.sparse.coo_array(([True]*len(X), (X, Y)), shape=(max(node_ids)+1, max(node_ids)+1))
+                        if dist:
+                            val.append(D)
+                            val.append(D)
+                        else:
+                            val.append(True)
+                            val.append(True)                        
+            final_GG = sp.sparse.coo_array((val, (X, Y)), shape=(max(node_ids)+1, max(node_ids)+1))
             final_GG = final_GG.tocsr()
 
         return final_GG
+
+    def smooth_data(self):
+        """
+        Smooth the gene expression according to the spatial neighborhood relationship.
+        The spatial neighborhood relationship is computed as the Gabriel graph.
+        The smoothed expression (`s_c`) of the gene `g` of a cell `c` which has
+        a set of neighbors `N_c = \{n_i\}` is computed as follow:
+            `s_c = \frac{\sum_{n_i \in N_c} ||n_i - c||*g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}`
+        where `||n_i - c||` is the distance between `n_i` and `c` and g_{n_i} is the measured 
+        expression intensity of the gene `g` in the cell `n_i`.
+        The result is stored in embryo.anndata.raw in place of the previous raw data.
+
+        :WARNING: This function can be high CPU and memory taxing since it is multiplying
+            the neighborhood adjacency matrix (nb_beadxnb_beads) by the gene expression matrix
+            (nb_beadsxnb_genes)
+        """
+        ids, pos = list(zip(*self.pos_3D.items()))
+        GG = self.build_gabriel_graph(ids, pos, 'adj-mat', dist=True)
+        GG = GG.astype(np.float32).toarray() # Matrix multiplication optimisation
+        gene_expr = embryo.anndata.raw.X.toarray()
+        prod = np.dot(GG, gene_expr)
+        nb_N = GG.sum(axis = 1)
+        prod_n = prod/nb_N.reshape(-1, 1)
+        prod_sp = sp.sparse.csr_array(prod_n)
+        tmp_ad = embryo.anndata.raw.to_adata()
+        tmp_ad.X = prod_sp
+        embryo.anndata.raw = tmp_ad
+
 
     def plot_coverslip(self, cs, pos='pos', ax=None,
                        tissues_to_plot=None, legend=False,
