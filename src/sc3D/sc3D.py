@@ -516,11 +516,11 @@ class Embryo:
         """
         Smooth the gene expression according to the spatial neighborhood relationship.
         The spatial neighborhood relationship is computed as the Gabriel graph.
-        The smoothed expression (`s_c`) of the gene `g` of a cell `c` which has
-        a set of neighbors `N_c = \{n_i\}` is computed as follow:
-            `s_c = \frac{\sum_{n_i \in N_c} ||n_i - c||*g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}`
-        where `||n_i - c||` is the distance between `n_i` and `c` and g_{n_i} is the measured 
-        expression intensity of the gene `g` in the cell `n_i`.
+        The smoothed expression (\(s_c \) of the gene $g$ of a cell $c$ which has
+        a set of neighbors $N_c = \{n_i\}$ is computed as follow:
+            $$s_c = \\frac{\sum_{n_i \in N_c} ||n_i - c||.g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}$$
+        where $||n_i - c||$ is the distance between $n_i$ and $c$ and $g_{n_i}$ is the measured 
+        expression intensity of the gene $g$ in the cell $n_i$.
         The result is stored in `self.anndata.raw` in place of the previous raw data if required.
         Otherwise, the smoothed matrix is returned.
 

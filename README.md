@@ -8,7 +8,7 @@ This code was developed in the context of the following study:
 
 **Spatial transcriptomic maps of whole mouse embryos reveal principles of neural tube patterning.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
 
-The whole code is based on the [anndata](https://anndata.readthedocs.io/en/latest/)/[Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
+The whole code is based on the [anndata](https://anndata.readthedocs.io/en/latest/) and [Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
 
 The dataset necessary to run the tests and look at the results can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (it is under the name `mouse_embryo_E8.5_merged_data`).
 

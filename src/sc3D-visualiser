@@ -11,44 +11,53 @@ from matplotlib import pyplot as plt
 from matplotlib import cm, colors
 from collections.abc import Iterable
 
-color_map_tissues = {
-     5: [0.7411764705882353, 0.803921568627451, 1.0],
-     6: [0.19607843137254902, 0.35294117647058826, 0.6078431372549019],
-     7: [0.996078431372549, 0.6862745098039216, 0.08627450980392157],
-     9: [0.7686274509803922, 0.27058823529411763, 0.10980392156862745],
-    10: [0.10980392156862745, 1.0, 0.807843137254902],
-    12: [0.7529411764705882, 0.4588235294117647, 0.6509803921568628],
-    13: [0.9647058823529412, 0.13333333333333333, 0.1803921568627451],
-    14: [0.7411764705882353, 0.43529411764705883, 0.6705882352941176],
-    15: [0.9686274509803922, 0.8823529411764706, 0.6274509803921569],
-    16: [1.0, 0.9803921568627451, 0.9803921568627451],
-    18: [0.47058823529411764, 0.16470588235294117, 0.7137254901960784],
-    20: [0.5019607843137255, 0.5019607843137255, 0.5019607843137255],
-    21: [0.9803921568627451, 0.0, 0.5294117647058824],
-    22: [0.5098039215686274, 0.1803921568627451, 0.10980392156862745],
-    23: [0.5215686274509804, 0.4, 0.050980392156862744],
-    24: [0.803921568627451, 0.1607843137254902, 0.5647058823529412],
-    27: [0.6588235294117647, 0.6588235294117647, 0.6588235294117647],
-    29: [0.0, 0.0, 0.5450980392156862],
-    30: [0.5450980392156862, 0.2784313725490196, 0.36470588235294116],
-    31: [1.0, 0.7568627450980392, 0.1450980392156863],
-    32: [0.8705882352941177, 0.6274509803921569, 0.9921568627450981],
-    33: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
-    34: [0.9725490196078431, 0.6313725490196078, 0.6235294117647059],
-    35: [0.7098039215686275, 0.9372549019607843, 0.7098039215686275],
-    36: [0.1803921568627451, 0.8509803921568627, 1.0],
-    39: [0.10980392156862745, 0.5137254901960784, 0.33725490196078434],
-    40: [1.0, 0.6470588235294118, 0.30980392156862746],
-    41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]}
-
 def display_embryo(viewer, embryo):
+    color_map_tissues = {
+        5: [0.7411764705882353, 0.803921568627451, 1.0],
+        6: [0.19607843137254902, 0.35294117647058826, 0.6078431372549019],
+        7: [0.996078431372549, 0.6862745098039216, 0.08627450980392157],
+        9: [0.7686274509803922, 0.27058823529411763, 0.10980392156862745],
+        10: [0.10980392156862745, 1.0, 0.807843137254902],
+        12: [0.7529411764705882, 0.4588235294117647, 0.6509803921568628],
+        13: [0.9647058823529412, 0.13333333333333333, 0.1803921568627451],
+        14: [0.7411764705882353, 0.43529411764705883, 0.6705882352941176],
+        15: [0.9686274509803922, 0.8823529411764706, 0.6274509803921569],
+        16: [1.0, 0.9803921568627451, 0.9803921568627451],
+        18: [0.47058823529411764, 0.16470588235294117, 0.7137254901960784],
+        20: [0.5019607843137255, 0.5019607843137255, 0.5019607843137255],
+        21: [0.9803921568627451, 0.0, 0.5294117647058824],
+        22: [0.5098039215686274, 0.1803921568627451, 0.10980392156862745],
+        23: [0.5215686274509804, 0.4, 0.050980392156862744],
+        24: [0.803921568627451, 0.1607843137254902, 0.5647058823529412],
+        27: [0.6588235294117647, 0.6588235294117647, 0.6588235294117647],
+        29: [0.0, 0.0, 0.5450980392156862],
+        30: [0.5450980392156862, 0.2784313725490196, 0.36470588235294116],
+        31: [1.0, 0.7568627450980392, 0.1450980392156863],
+        32: [0.8705882352941177, 0.6274509803921569, 0.9921568627450981],
+        33: [0.19607843137254902, 0.5137254901960784, 0.996078431372549],
+        34: [0.9725490196078431, 0.6313725490196078, 0.6235294117647059],
+        35: [0.7098039215686275, 0.9372549019607843, 0.7098039215686275],
+        36: [0.1803921568627451, 0.8509803921568627, 1.0],
+        39: [0.10980392156862745, 0.5137254901960784, 0.33725490196078434],
+        40: [1.0, 0.6470588235294118, 0.30980392156862746],
+        41: [0.8470588235294118, 0.7490196078431373, 0.8470588235294118]
+    }
     tissues_to_plot = [18, 21, 30, 31, 34]
     cells = sorted(embryo.all_cells)
     positions = [embryo.pos_3D[c] for c in cells]
     shown = [embryo.tissue[c] in tissues_to_plot for c in cells]
+    if not any(shown):
+        shown = [True]*len(cells)
     properties = {'cells': cells}
-    colors_rgb = [color_map_tissues[embryo.tissue[c]] for c in cells]
+
     properties['gene'] = [0 for _ in cells]
+    if 0<len(embryo.all_tissues.difference(color_map_tissues)):
+        nb_tissues = len(embryo.all_tissues)
+        color_map_tissues = {v:cm.tab20(i/nb_tissues)
+                                for i, v in enumerate(embryo.all_tissues)}
+
+    colors_rgb = [color_map_tissues.get(embryo.tissue[c], [0, 0, 0]) for c in cells]
+    
 
     points = viewer.add_points(positions, face_color=colors_rgb,
                                properties=properties,
@@ -56,16 +65,16 @@ def display_embryo(viewer, embryo):
 
     @magicgui(call_button='Select tissues',
               tissues={'widget_type': 'Select',
-                         'choices': [embryo.corres_tissue.get(t, '')
+                         'choices': [embryo.corres_tissue.get(t, f'{t}')
                                    for t in embryo.all_tissues],
-                         'value': [embryo.corres_tissue.get(t, '')
+                         'value': [embryo.corres_tissue.get(t, f'{t}')
                                  for t in tissues_to_plot]})
     def select_tissues(viewer: Viewer, tissues):
         tissue_to_num = {v:k for k, v in embryo.corres_tissue.items()}
         points = viewer.layers.selection.active
         if points is None:
             return
-        tissues_to_plot = [tissue_to_num[t] for t in tissues]
+        tissues_to_plot = [tissue_to_num.get(t, int(t)) for t in tissues]
         shown = [embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
         points.shown = shown
         points.features['current_view'] = shown
@@ -140,7 +149,7 @@ def display_embryo(viewer, embryo):
                 tissues = set([embryo.tissue[c] for c in
                                points.properties['cells'][points.shown]])
                 for t in tissues:
-                    ax.plot([], 'o', c=color_map_tissues[t], label=embryo.corres_tissue[t])
+                    ax.plot([], 'o', c=color_map_tissues[t], label=embryo.corres_tissue.get(t, f'{t}'))
                 ax.legend()
             else:
                 if points.face_contrast_limits is None:
@@ -265,9 +274,14 @@ def registering(viewer: Viewer, register):
             tissues_to_ignore = list(tissues_to_ignore)
         else:
             tissues_to_ignore = [tissues_to_ignore]
-        with open(tissue_names) as f:
-            corres_tissues = json.load(f)
-            corres_tissues = {eval(k): v for k, v in corres_tissues.items()}
+        tissue_names = Path(tissue_names)
+        if p.suffix == '.json':
+            with open(tissue_names) as f:
+                corres_tissues = json.load(f)
+                corres_tissues = {k if isinstance(k, int) else eval(k): v
+                                    for k, v in corres_tissues.items()}
+        else:
+            corres_tissues = {}
         embryo = Embryo(data_path, tissues_to_ignore, corres_tissues, tissue_weight=tissue_weight,
             xy_resolution=xy_resolution, genes_of_interest=[],
             nb_CS_begin_ignore=nb_begin, nb_CS_end_ignore=nb_end,
@@ -292,9 +306,14 @@ def loading_embryo():
                             'filter': '*.json'})
     def load_file(viewer: Viewer, data_path: str,
                   tissue_names: str) -> Embryo:
-        with open(tissue_names) as f:
-            corres_tissues = json.load(f)
-            corres_tissues = {eval(k): v for k, v in corres_tissues.items()}
+        tissue_names = Path(tissue_names)
+        if tissue_names.suffix == '.json':
+            with open(tissue_names) as f:
+                corres_tissues = json.load(f)
+                corres_tissues = {k if isinstance(k, int) else eval(k): v
+                                    for k, v in corres_tissues.items()}
+        else:
+            corres_tissues = {}
         embryo = Embryo(data_path, store_anndata=True, corres_tissue=corres_tissues)
         viewer.window.remove_dock_widget('all')
         display_embryo(viewer, embryo)
