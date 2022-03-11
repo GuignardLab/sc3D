@@ -218,7 +218,7 @@ def registering(viewer: Viewer, register):
                             'widget_type': 'FileEdit',
                             'value': Path('.').absolute(),#.home(),
                             'filter': '*.json'},
-              tissues={'widget_type': 'LiteralEvalLineEdit', 'label': 'Tissue',
+              tissues_to_ignore={'widget_type': 'LiteralEvalLineEdit', 'label': 'Tissue',
                        'value': '13, 15, 16, 22, 27, 29, 32, 36, 40, 41',
                        'tooltip': 'List of tissues that are ignored to do coverslip registration'
                       },
@@ -240,7 +240,12 @@ def registering(viewer: Viewer, register):
               xy_resolution={'widget_type': 'LiteralEvalLineEdit',
                              'label': 'x/y resolution',
                              'value': '0.6',
-                             'tooltip': 'xy resolution'
+                             'tooltip': 'xy resolution (in um)'
+                            },
+              z_spacing={'widget_type': 'LiteralEvalLineEdit',
+                             'label': 'z spacing',
+                             'value': '30.0',
+                             'tooltip': 'z spacing (in um)'
                             },
               th_d={'widget_type': 'LiteralEvalLineEdit',
                     'label': 'Distance threshold',
@@ -255,18 +260,18 @@ def registering(viewer: Viewer, register):
                                  'Value between 0 (all beads taken) and 1 (almost no beads taken)')
                                })
     def register(data_path, tissue_names, tissues, nb_begin, nb_end, tissue_weight,
-                 xy_resolution, th_d, outlier_threshold):
-        if isinstance(tissues, Iterable):
-            tissues_to_ignore = list(tissues)
+                 xy_resolution, z_spacing, th_d, outlier_threshold):
+        if isinstance(tissues_to_ignore, Iterable):
+            tissues_to_ignore = list(tissues_to_ignore)
         else:
-            tissues_to_ignore = [tissues]
+            tissues_to_ignore = [tissues_to_ignore]
         with open(tissue_names) as f:
             corres_tissues = json.load(f)
             corres_tissues = {eval(k): v for k, v in corres_tissues.items()}
         embryo = Embryo(data_path, tissues_to_ignore, corres_tissues, tissue_weight=tissue_weight,
             xy_resolution=xy_resolution, genes_of_interest=[],
             nb_CS_begin_ignore=nb_begin, nb_CS_end_ignore=nb_end,
-            store_anndata=True)
+            store_anndata=True, z_space=z_spacing)
         embryo.removing_spatial_outliers(th=outlier_threshold)
         embryo.reconstruct_intermediate(embryo, th_d=th_d, genes=[])
         viewer.window.remove_dock_widget('all')
