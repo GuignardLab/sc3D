@@ -15,10 +15,8 @@ from scipy.spatial import KDTree, Delaunay
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
-from scipy import stats
-import seaborn as sns
-
-from sklearn import linear_model
+from scipy.stats import zscore, linregress
+from seaborn import scatterplot
 
 import anndata
 import transformations as tr
@@ -1268,15 +1266,17 @@ class Embryo:
         regression_x = 'Avg #Neighbors ratio'
         regression_y = 'Volume ratio'
 
-        regr = linear_model.LinearRegression()
-        data_x_reshaped = data_plot[regression_x].reshape(-1,1)
-        data_y_reshaped = data_plot[regression_y].reshape(-1,1)
-        regr.fit(data_x_reshaped, data_y_reshaped)
-        b = regr.intercept_[0]
-        a = regr.coef_[0][0]
-
-        data_plot['Localization score'] = np.abs((data_y_reshaped-
-                                               regr.predict(data_x_reshaped))[:,0])
+        regression = linregress(data_plot[regression_x], data_plot[regression_y])
+        b = regression.intercept
+        a = regression.slope
+        f = lambda x: a*x + b
+        data_plot['Localization score'] = np.abs(data_plot[regression_y]-f(data_plot[regression_x]))
+        # regr = LinearRegression()
+        # data_x_reshaped = data_plot[regression_x].reshape(-1,1)
+        # data_y_reshaped = data_plot[regression_y].reshape(-1,1)
+        # regr.fit(data_x_reshaped, data_y_reshaped)
+        # data_plot['Localization score'] = np.abs((data_y_reshaped-
+        #                                        regr.predict(data_x_reshaped))[:,0])
         data_plot['Interesting gene row ID'] = interesting_genes
         if self.all_genes:
             data_plot['Gene names'] = np.array(self.anndata.raw.var_names[data_plot['Interesting gene row ID']])
@@ -1415,7 +1415,7 @@ class Embryo:
                     tissue_order.append(t)
         # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
         if compute_z_score:
-            values = stats.zscore(values, axis=0)
+            values = zscore(values, axis=0)
         if ax is None:
             fig, ax = plt.subplots(figsize=(5,max(5, round(1.5*nb_genes))))
         if fig is None:
@@ -1466,7 +1466,7 @@ class Embryo:
             fig = ax.get_figure()
         x = 'Avg #Neighbors ratio'
         y = 'Volume ratio'
-        g = sns.scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Localization score', **kwargs)
+        g = scatterplot(data=data_plot, x=x, y=y, ax=ax, hue='Localization score', **kwargs)
         legend = g.axes.get_legend()
         legend.set_title('Localization score')
         ax.set_ylabel('Relative volume (to total tissue volume)')
