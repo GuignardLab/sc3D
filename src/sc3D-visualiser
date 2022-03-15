@@ -74,7 +74,12 @@ def display_embryo(viewer, embryo):
         points = viewer.layers.selection.active
         if points is None:
             return
-        tissues_to_plot = [tissue_to_num.get(t, int(t)) for t in tissues]
+        tissues_to_plot = []
+        for t in tissues:
+            if t in tissue_to_num:
+                tissues_to_plot.append(tissue_to_num[t])
+            else:
+                tissues_to_plot.append(int(t))
         shown = [embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
         points.shown = shown
         points.features['current_view'] = shown
