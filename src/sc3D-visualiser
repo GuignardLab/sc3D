@@ -10,6 +10,7 @@ from napari.utils.colormaps import ALL_COLORMAPS
 from matplotlib import pyplot as plt
 from matplotlib import cm, colors
 from collections.abc import Iterable
+import numpy as np
 
 def display_embryo(viewer, embryo):
     color_map_tissues = {
@@ -57,11 +58,11 @@ def display_embryo(viewer, embryo):
                                 for i, v in enumerate(embryo.all_tissues)}
 
     colors_rgb = [color_map_tissues.get(embryo.tissue[c], [0, 0, 0]) for c in cells]
-    
+
 
     points = viewer.add_points(positions, face_color=colors_rgb,
                                properties=properties,
-                               metadata={'gene': None}, shown=shown)
+                               metadata={'gene': None, '2genes': None}, shown=shown)
 
     @magicgui(call_button='Select tissues',
               tissues={'widget_type': 'Select',
@@ -83,10 +84,12 @@ def display_embryo(viewer, embryo):
         shown = [embryo.tissue[c] in tissues_to_plot for c in points.properties['cells']]
         points.shown = shown
         points.features['current_view'] = shown
-        if points.metadata['gene'] is None:
+        if points.metadata['gene'] is None and points.metadata['2genes'] is None:
             show_tissues(viewer)
-        else:
+        elif points.metadata['2genes'] is None:
             show_gene(viewer, points.metadata['gene'])
+        else:
+            show_two_genes(viewer, *points.metadata['2genes'])
 
     @magicgui(auto_call=True,
               cmap={'label': 'colormap',
@@ -104,7 +107,7 @@ def display_embryo(viewer, embryo):
         points.refresh()
 
     @magicgui(call_button='Show gene',
-              gene={'label': 'Choose gene'},
+              gene={'label': 'Choose gene', 'value': 'T'},
               result_widget=True)
     def show_gene(viewer: Viewer, gene: str):
         points = viewer.layers.selection.active
@@ -122,6 +125,7 @@ def display_embryo(viewer, embryo):
             points.features['gene'] = colors
             points.metadata['gene_min_max'] = min_c, max_c
             points.metadata['gene'] = gene
+        points.metadata['2genes'] = None
         points.edge_color = 'black'
         points.face_color = 'gene'
         points.face_color_mode = 'colormap'
@@ -129,18 +133,73 @@ def display_embryo(viewer, embryo):
         points.refresh()
         return f"{points.metadata['gene']} displayed"
 
+    @magicgui(call_button='Show gene',
+              gene1={'label': 'First gene (main)', 'value': 'T'},
+              gene2={'label': 'Second gene', 'value': 'Sox2'},
+              low_th={'label': 'Low threshold',
+                      'value': 2, 'min':0, 'max':100},
+              high_th={'label': 'High threshold',
+                       'value': 98, 'min':0, 'max':100},
+              main_bi_color={'label': 'Main color', 'widget_type': 'ComboBox',
+                             'choices': ['Red', 'Green', 'Blue'],
+                             'value': 'Red'},
+              result_widget=True)
+
+    def show_two_genes(viewer: Viewer, gene1: str, gene2: str,
+                       low_th: float, high_th: float,
+                       main_bi_color: str):
+        points = viewer.layers.selection.active
+        cell_list = list(embryo.all_cells)
+        if points is None:
+            return 'A point layout should be selected'
+        if not gene1 in embryo.anndata.raw.var_names:
+            return f"'{gene1}' not found"
+        if not gene2 in embryo.anndata.raw.var_names:
+            return f"'{gene2}' not found"
+        if (not points.metadata['2genes'] or
+            (gene1, gene2, low_th,
+             high_th, main_bi_color) != points.metadata['2genes']):
+            if 'current_view' in points.features:
+                mask = points.features['current_view']
+            else:
+                mask = points.shown
+            colors1 = embryo.anndata.raw[:, gene1].X.toarray()[:, 0]
+            colors2 = embryo.anndata.raw[:, gene2].X.toarray()[:, 0]
+            C = np.array([colors1, colors2])
+            min_g1 = np.percentile(C[0][mask], low_th)
+            min_g2 = np.percentile(C[1][mask], low_th)
+            max_g1 = np.percentile(C[0][mask], high_th)
+            max_g2 = np.percentile(C[1][mask], high_th)
+            norm = lambda C: (C-[[min_g1], [min_g2]]) / [[max_g1-min_g1], [max_g2-min_g2]]
+            V = norm(C)
+            V[V<0] = 0
+            V[1<V] = 1
+            final_C = np.zeros((len(colors1), 3))
+            on_channel = (np.array(['Red', 'Green', 'Blue'])!=main_bi_color).astype(int)
+            final_C[:,0] = V[on_channel[0]]
+            final_C[:,1] = V[on_channel[1]]
+            final_C[:,2] = V[on_channel[2]]
+            points.face_color = final_C
+            points.face_color_mode = 'direct'
+            points.features['2genes'] = colors1
+            points.metadata['2genes'] = (gene1, gene2, low_th, high_th, main_bi_color)
+            points.metadata['2genes_params'] = (max_g1, max_g2, norm, on_channel)
+            points.metadata['gene'] = None
+            points.edge_color = 'black'
+        return ', '.join(points.metadata['2genes'][:2])
+
     @magicgui(call_button='Color according to cell types')
     def show_tissues(viewer: Viewer):
         points = viewer.layers.selection.active
         if points is None:
             return
-        if points.metadata['gene'] is not None:
+        if (points.metadata['gene'] is not None or
+            points.metadata['2genes'] is not None):
             points.face_color = [color_map_tissues[embryo.tissue[c]]
                                  for c in points.properties['cells']]
-            # tissues = set([embryo.tissue[c] for c in
-            #                points.properties['cells'][points.shown]])
             points.face_color_mode = 'direct'
             points.metadata['gene'] = None
+            points.metadata['2genes'] = None
         points.refresh()
 
     @magicgui(call_button='Display color legend')
@@ -150,13 +209,15 @@ def display_embryo(viewer, embryo):
             return
         with plt.style.context('dark_background'):
             fig, ax = plt.subplots()
-            if points.metadata['gene'] is None:
+            if (points.metadata['gene'] is None and
+                points.metadata['2genes'] is None):
                 tissues = set([embryo.tissue[c] for c in
                                points.properties['cells'][points.shown]])
                 for t in tissues:
                     ax.plot([], 'o', c=color_map_tissues[t], label=embryo.corres_tissue.get(t, f'{t}'))
                 ax.legend()
-            else:
+                ax.set_axis_off()
+            elif points.metadata['2genes'] is None:
                 if points.face_contrast_limits is None:
                     m, M = 0, 1
                 else:
@@ -173,7 +234,30 @@ def display_embryo(viewer, embryo):
                     plt.text(0, 0, ( 'Could not find the colormap '
                                     f'`{points.face_colormap.name}` '
                                      'to plot the legend'))
-            ax.set_axis_off()
+                ax.set_axis_off()
+            else:
+                scale_square = np.zeros((256, 256, 3))
+                max_g1, max_g2, norm, on_channel = points.metadata['2genes_params']
+                V1 = np.linspace(0, max_g1, 256)
+                V2 = np.linspace(0, max_g2, 256)
+                VS = np.array([V1, V2])
+                VS = norm(VS)
+                VS[VS<0] = 0
+                VS[1<VS] = 1
+                scale_square[...,np.where(1-on_channel)[0][0]] = VS[0]
+                for axes in np.where(on_channel)[0]:
+                    scale_square[...,axes] = VS[1].reshape(-1, 1)
+                ax.imshow(scale_square.swapaxes(1, 0), origin='lower')
+                recap_g1 = lambda x: x*255/max_g1
+                recap_g2 = lambda x: x*255/max_g2
+                vals_g1 = np.arange(np.floor(max_g1)+1, dtype=int)
+                vals_g2 = np.arange(np.floor(max_g2)+1, dtype=int)
+                ax.set_xticks(recap_g1(vals_g1))
+                ax.set_yticks(recap_g2(vals_g2))
+                ax.set_xticklabels(vals_g1)
+                ax.set_yticklabels(vals_g2)
+                ax.set_xlabel(points.metadata['2genes'][1])
+                ax.set_ylabel(points.metadata['2genes'][0])
             fig.tight_layout()
             plt.show()
 
@@ -206,13 +290,17 @@ def display_embryo(viewer, embryo):
                         (min<=points.features['gene'])&(points.features['gene']<=max))
         points.refresh()
 
-    viewer.window.add_dock_widget(select_tissues)
-    viewer.window.add_dock_widget(disp_legend)
-    viewer.window.add_dock_widget(show_tissues)
-    viewer.window.add_dock_widget(show_gene)
-    viewer.window.add_dock_widget(threshold)
-    viewer.window.add_dock_widget(adj_int)
-    viewer.window.add_dock_widget(apply_cmap)
+    viewer.window.add_dock_widget(select_tissues, name='Tissue selection')
+    viewer.window.add_dock_widget(disp_legend, name='Legend')
+    viewer.window.add_dock_widget(show_tissues, name='Tissue colormap')
+    g1_cmp = viewer.window.add_dock_widget(show_gene, name='Gene colormap')
+    g2_cmp = viewer.window.add_dock_widget(show_two_genes, name='Two genes colormap')
+    g_th = viewer.window.add_dock_widget(threshold, name='Gene threshold')
+    contrast = viewer.window.add_dock_widget(adj_int, name='Contrast')
+    cmap = viewer.window.add_dock_widget(apply_cmap, name='Colormap')
+
+    viewer.window._qt_window.tabifyDockWidget(contrast, cmap)
+    viewer.window._qt_window.tabifyDockWidget(g1_cmp, g2_cmp)
 
     return viewer
 
@@ -297,7 +385,7 @@ def registering(viewer: Viewer, register):
         display_embryo(viewer, embryo)
 
     viewer.window.remove_dock_widget('all')
-    viewer.window.add_dock_widget(register)
+    viewer.window.add_dock_widget(register, name='sc3D registration')
 
 def loading_embryo():
     @magicgui(call_button='Load atlas',
@@ -324,8 +412,8 @@ def loading_embryo():
         display_embryo(viewer, embryo)
 
     viewer = Viewer(ndisplay=3)
-    W = viewer.window.add_dock_widget(load_file)
-    viewer.window.add_dock_widget(registering)
+    W = viewer.window.add_dock_widget(load_file, name='Atlas loading')
+    viewer.window.add_dock_widget(registering, name='sc3D registration')
     napari.run()
     return viewer, W
 

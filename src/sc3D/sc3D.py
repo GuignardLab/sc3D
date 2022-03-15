@@ -1002,7 +1002,8 @@ class Embryo:
         genes = np.array(genes)
         plan = (np.abs(equation(points))<thickness)
         points_to_plot = points[plan]
-        points_to_plot = (np.hstack([points_to_plot, [[1]]*points_to_plot.shape[0]])@rot_composed)[:, :-1]
+        points_to_plot = (np.hstack([points_to_plot,
+                                    [[1]]*points_to_plot.shape[0]])@rot_composed)[:, :-1]
         color_to_plot = colors[plan]
         genes_to_plot = genes.T[plan]
         df = pd.DataFrame(genes_to_plot, columns=gene_list)
