@@ -101,6 +101,25 @@ class Embryo:
             store_anndata (bool): whether or not to store the anndata
                 matrix. The matrix is necessary when looking for
                 differentially expressed genes
+            tissue_id (str): string naming the column containing the tissue ids. The
+                tissue ids will be contained in `data.obs[tissue_id]`.
+                Default: 'predicted.id'
+            array_id (str): string naming the column containing the array/puck/slice
+                id. It will determine the `z` position of the cell.
+                The array id will be contained in `data.obs[array_id]` in the format
+                '.*_[0-9]*' where everything after the underscore (`_`) is considered
+                as the id number of the array.
+                Default: 'predicted.id'
+            pos_id (str): string naming the column containing the x, y positions. The
+                x, y positions will be contained in `data.obsm[pos_id]`.
+                Default: 'X_spatial'
+            pos_reg_id (str): string naming the column containing the x, y, z registered
+                positions. The x, y, z registered positions will be contained
+                in `data.obsm[pos_reg_id]`.
+                Default: 'X_spatial_registered'
+            gene_name_id (str): string naming the column containing the gene names.
+                The gene names will be contained in `data.var[gene_name_id]`.
+                Default: 'feature_name'
         """
         data = anndata.read(str(path))
         if tissues_to_ignore is not None:
@@ -110,12 +129,6 @@ class Embryo:
             cs_to_remove = orig[:self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore:]
             data = data[~(data.obs[array_id].isin(cs_to_remove))]
         data.raw = data.raw.to_adata()
-        # if (tissues_to_ignore is None and
-        #     self.nb_CS_begin_ignore == 0 and
-        #     self.nb_CS_end_ignore == 0):
-        #     data_kept = np.arange(len(data.obs))
-        # else:
-        #     data_kept = np.array(list(data_kept))
         ids = range(len(data))
         self.all_cells = list(ids)
         self.cell_names = dict(zip(ids,
@@ -156,7 +169,6 @@ class Embryo:
             self.cells_from_tissue.setdefault(T, set()).add(c)
         self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
         self.all_tissues = set(self.cells_from_tissue)
-        # else:
         self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
@@ -281,7 +293,6 @@ class Embryo:
             self.tissue_centers[cs] = {}
             tissues = {t: cells.intersection(T)
                        for t, T in self.cells_from_tissue.items()}
-                       # if t in self.tissue_reg}
             tissues[-1] = cells
             for tissue, c_tissue in tissues.items():
                 if len(c_tissue)>2:
@@ -611,7 +622,6 @@ class Embryo:
         scatter_args.update(kwargs)
         if color is None:
             color = tissues
-            # scatter_args['c'] = color
         elif isinstance(color, dict):
             color = [color.get(t, [.8,]*3) for t in tissues]
         scatter = ax.scatter(*positions.T, c=color, **scatter_args)
@@ -655,7 +665,6 @@ class Embryo:
             proba0 = gmm.predict_proba(D.reshape(-1, 1))[:, order[0,0]]
             proba1 = gmm.predict_proba(D.reshape(-1, 1))[:, order[1,0]]
             self.filtered_cells.update(cells_final[(th<proba0)|(th<proba1)])
-        # self.cells.intersection_update(self.filtered_cells)
         self.all_cells = set(self.all_cells).intersection(self.filtered_cells)
         self.pos = {k:self.pos[k] for k in self.filtered_cells}
         self.tissue = {k:self.tissue[k] for k in self.filtered_cells}
@@ -815,8 +824,6 @@ class Embryo:
                                                                 k=1,
                                                                 ext='const')
                     all_expr.setdefault(g, {}).update({traj[0]: [min(z_traj), max(z_traj), f_traj_v]})
-            # f_traj_x = Rbf(z_traj, pos_traj_x, smooth=.5)#, function='gaussian', smooth=2)
-            # f_traj_y = Rbf(z_traj, pos_traj_y, smooth=.5)#, function='gaussian', smooth=2)
 
             all_trajs[traj[0]] = [min(z_traj), max(z_traj), f_traj_x, f_traj_y]
             cells_to_treat -= set(traj)
@@ -920,7 +927,6 @@ class Embryo:
                     scale_square[...,np.where(on_channel)[0][0]] = VS[0]
                     for ax in np.where(1-on_channel)[0]:
                         scale_square[...,ax] = VS[1].reshape(-1, 1)
-                    # scale_square[...,np.where(1-on_channel)[0]]
                     fig, ax = plt.subplots(figsize=(5, 5))
                     ax.imshow(scale_square.swapaxes(1, 0), origin='lower')
                     recap_g1 = lambda x: x*255/max_g1
@@ -1269,7 +1275,7 @@ class Embryo:
         # List of genes that are expressing enough within the tissue
         interesting_genes = np.where(mask_expr)[0]
 
-        # Copmuting the number of cells expressing
+        # Computing the number of cells expressing
         avg_nb_neighbs = []
         for g in interesting_genes:
             nb_N_for_g = self.neighbs(g, sub_data, cells)
@@ -1293,12 +1299,6 @@ class Embryo:
         a = regression.slope
         f = lambda x: a*x + b
         data_plot['Localization score'] = np.abs(data_plot[regression_y]-f(data_plot[regression_x]))
-        # regr = LinearRegression()
-        # data_x_reshaped = data_plot[regression_x].reshape(-1,1)
-        # data_y_reshaped = data_plot[regression_y].reshape(-1,1)
-        # regr.fit(data_x_reshaped, data_y_reshaped)
-        # data_plot['Localization score'] = np.abs((data_y_reshaped-
-        #                                        regr.predict(data_x_reshaped))[:,0])
         data_plot['Interesting gene row ID'] = interesting_genes
         if self.all_genes:
             data_plot['Gene names'] = np.array(self.anndata.raw.var_names[data_plot['Interesting gene row ID']])
@@ -1571,6 +1571,25 @@ class Embryo:
             store_anndata (bool): if true the anndata array is stored. Necessary when
                 doing 3D differential expression analysis
                 Default: False
+            tissue_id (str): string naming the column containing the tissue ids. The
+                tissue ids will be contained in `data.obs[tissue_id]`.
+                Default: 'predicted.id'
+            array_id (str): string naming the column containing the array/puck/slice
+                id. It will determine the `z` position of the cell.
+                The array id will be contained in `data.obs[array_id]` in the format
+                '.*_[0-9]*' where everything after the underscore (`_`) is considered
+                as the id number of the array.
+                Default: 'predicted.id'
+            pos_id (str): string naming the column containing the x, y positions. The
+                x, y positions will be contained in `data.obsm[pos_id]`.
+                Default: 'X_spatial'
+            pos_reg_id (str): string naming the column containing the x, y, z registered
+                positions. The x, y, z registered positions will be contained
+                in `data.obsm[pos_reg_id]`.
+                Default: 'X_spatial_registered'
+            gene_name_id (str): string naming the column containing the gene names.
+                The gene names will be contained in `data.var[gene_name_id]`.
+                Default: 'feature_name'
         """
         self.cells = set()
         self.pos = {}

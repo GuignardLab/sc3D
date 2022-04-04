@@ -15,7 +15,7 @@ setup(
     name='sc-3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
-    version='0.1.1',
+    version='0.1.3',
     description='Array alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -25,6 +25,8 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10'
     ],
     packages=['sc3D'],
     package_dir={ '' : 'src' },
