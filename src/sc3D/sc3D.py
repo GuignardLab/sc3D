@@ -17,6 +17,8 @@ from scipy.optimize import linear_sum_assignment
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from scipy.stats import zscore, linregress
 from seaborn import scatterplot
+import json
+from pathlib import Path
 
 import anndata
 import transformations as tr
@@ -77,7 +79,12 @@ class Embryo:
     def read_anndata(self, path, xy_resolution=1,
                      genes_of_interest=None,
                      tissues_to_ignore=None,
-                     store_anndata=False):
+                     store_anndata=False,
+                     tissue_id='predicted.id',
+                     array_id='orig.ident',
+                     pos_id='X_spatial',
+                     pos_reg_id='X_spatial_registered',
+                     gene_name_id='feature_name'):
         """
         Reads and loads a 3D spatial single cell
         omics dataset from an anndata file.
@@ -97,11 +104,11 @@ class Embryo:
         """
         data = anndata.read(str(path))
         if tissues_to_ignore is not None:
-            data = data[~(data.obs['predicted.id'].astype(int).isin(tissues_to_ignore))]
+            data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
-            orig = sorted(set(data.obs['orig.ident']))
+            orig = sorted(set(data.obs[array_id]))
             cs_to_remove = orig[:self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore:]
-            data = data[~(data.obs['orig.ident'].isin(cs_to_remove))]
+            data = data[~(data.obs[array_id].isin(cs_to_remove))]
         data.raw = data.raw.to_adata()
         # if (tissues_to_ignore is None and
         #     self.nb_CS_begin_ignore == 0 and
@@ -115,21 +122,21 @@ class Embryo:
                                    map(lambda x, y: str.split(x, y)[-1],
                                        data.obs_names, '_'*len(data))))
         self.pos = dict(zip(ids,
-                            data.obsm['X_spatial']*xy_resolution))
+                            data.obsm[pos_id]*xy_resolution))
 
 
         self.tissue = dict(zip(ids,
-                               data.obs['predicted.id'].astype(int)))
+                               data.obs[tissue_id].astype(int)))
         cs = list(map(lambda x, y: int(str.split(x, y)[1]),
-                      data.obs['orig.ident'],
-                      '_'*len(data.obs['orig.ident'])))
+                      data.obs[array_id],
+                      '_'*len(data.obs[array_id])))
         self.cover_slip = dict(zip(ids, cs))
 
             
-        if 'feature_name' in data.var:
-            data.var.set_index('feature_name', inplace=True)
-            if 'feature_name' in data.raw.var:
-                data.raw.var.set_index('feature_name', inplace=True)
+        if gene_name_id in data.var:
+            data.var.set_index(gene_name_id, inplace=True)
+            if gene_name_id in data.raw.var:
+                data.raw.var.set_index(gene_name_id, inplace=True)
             else:
                 data.raw.var.set_index(data.var.index,
                                        inplace=True)
@@ -153,9 +160,9 @@ class Embryo:
         self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
-        if 'X_spatial_registered' in data.obsm:
+        if pos_reg_id in data.obsm:
             self.pos_3D = dict(zip(ids,
-                                   data.obsm['X_spatial_registered']))
+                                   data.obsm[pos_reg_id]))
         else:
             self.set_zpos()
 
@@ -688,6 +695,8 @@ class Embryo:
             cs_to_treat = cs
         else:
             cs_to_treat = self.all_cover_slips
+        if self.z_pos is None or set(self.z_pos)!=set(self.all_cells):
+            self.set_zpos()
         self.GG_cs = {}
         self.KDT_cs = {}
         for i, cs1 in enumerate(cs_to_treat[:-1]):
@@ -954,17 +963,20 @@ class Embryo:
         ax.scatter(*(points_to_plot.T[:-1]), **kwargs_scatter)
         ax.axis('equal')
         if output_path is not None:
+            output_path = Path(output_path)
+            if not output_path.parent.exists():
+                Path.mkdir(output_path.parent)
             fig.savefig(output_path)
         return points_to_plot
 
-    def anndata_slice(self, file_name, angle, gene_list, rot_orig=None,
+    def anndata_slice(self, output_path, angle, gene_list, rot_orig=None,
                       origin=None, thickness=30, tissues=None,
                       angle_unit='degree'):
         """
         Build a anndata file containing a slice
 
         Args:
-            file_name (str): path to the output ply file
+            output_path (str): path to the output ply file
             angle (float): angle of the rotation of the slice
             color_map (matplotlib.cmap): color map that will be applied
             rot_origin ([int, int, int]): 3D vector of the normal of the
@@ -1010,18 +1022,21 @@ class Embryo:
         D = anndata.AnnData(df)
         D.obsm['X_Spatial'] = points_to_plot
         D.obs['predicted.id'] = [str(k) for k in color_to_plot]
-        D.write(file_name)
+        output_path = Path(output_path)
+        if not output_path.parent.exists():
+            Path.mkdir(output_path.parent)
+        D.write(output_path)
 
         return points_to_plot
 
-    def anndata_no_extra(self, file_name, angle, rot_orig=None,
+    def anndata_no_extra(self, output_path, angle, rot_orig=None,
                          origin=None, thickness=30, angle_unit='degree'):
         """
         Build a anndata file containing a slice without doing interpolation
         but any gene can be requested
 
         Args:
-            file_name (str): path to the output `h5ad` file
+            output_path (str): path to the output `h5ad` file
             angle (float): angle of the rotation of the slice
             color_map (matplotlib.cmap): color map that will be applied
             rot_origin ([int, int, int]): 3D vector of the normal of the
@@ -1057,20 +1072,26 @@ class Embryo:
         pos_final = np.array([list(self.final[c])+[self.z_pos[c]] for c in kept])
         pos_final = (np.hstack([pos_final, [[1]]*pos_final.shape[0]])@rot_composed)[:, :-1]
         data_tmp.obsm['X_spatial_registered'] = pos_final
-        data_tmp.write(file_name)
+        output_path = Path(output_path)
+        if not output_path.parent.exists():
+            Path.mkdir(output_path.parent)
+        data_tmp.write(output_path)
 
-    def save_anndata(self, file_name):
+    def save_anndata(self, output_path):
         """
         Save the registered dataset as an anndata file
 
         Args:
-            file_name (str): path to the output anndata file ('.h5ad' file)
+            output_path (str): path to the output anndata file ('.h5ad' file)
         """
         data_tmp = self.anndata.copy()
         all_c_sorted = sorted(self.all_cells)
         pos_final = np.array([self.pos_3D[c] for c in all_c_sorted])
         data_tmp.obsm['X_spatial_registered'] = pos_final
-        data_tmp.write(file_name)
+        output_path = Path(output_path)
+        if not output_path.parent.exists():
+            Path.mkdir(output_path.parent)
+        data_tmp.write(output_path)
 
     def produce_em(self, nb_intra=5, tissues_to_plot=None,
                    gene=None, gene_list=None):
@@ -1431,6 +1452,9 @@ class Embryo:
             ax.set_yticklabels(list(self.anndata[:,genes_of_interest].var_names))
         fig.tight_layout()
         if output_path is not None:
+            output_path = Path(output_path)
+            if not output_path.parent.exists():
+                Path.mkdir(output_path.parent)
             fig.savefig(output_path)
         return fig, ax
 
@@ -1491,6 +1515,9 @@ class Embryo:
         ax.set_title(self.corres_tissue[t])
         fig.tight_layout()
         if output_path is not None:
+            output_path = Path(output_path)
+            if not output_path.parent.exists():
+                Path.mkdir(output_path.parent)
             fig.savefig(output_path)
 
     def print_diff_expr_genes(self, tissue, nb):
@@ -1517,7 +1544,10 @@ class Embryo:
                  corres_tissue=None, tissue_weight=None,
                  xy_resolution=1, genes_of_interest=None,
                  nb_CS_begin_ignore=0, nb_CS_end_ignore=0,
-                 store_anndata=False, z_space=30.):
+                 store_anndata=False, z_space=30., 
+                 tissue_id='predicted.id', array_id='orig.ident',
+                 pos_id='X_spatial', pos_reg_id='X_spatial_registered',
+                 gene_name_id='feature_name'):
         """
         Initialize an spatial single cell embryo
 
@@ -1553,10 +1583,17 @@ class Embryo:
         self.nb_CS_begin_ignore=nb_CS_begin_ignore
         self.nb_CS_end_ignore=nb_CS_end_ignore
         self.tissues_to_ignore = [] if tissues_to_ignore is None else tissues_to_ignore
-        self.corres_tissue = {} if corres_tissue is None else corres_tissue
+        if corres_tissue is None:
+            self.corres_tissue = {}
+        elif isinstance(corres_tissue, str) or hasattr(corres_tissue, 'exists'):
+            with open(corres_tissue) as f:
+                self.corres_tissue = json.load(f)
+                self.corres_tissue = {eval(k): v for k, v in self.corres_tissue.items()}
+        else:
+            self.corres_tissue = corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
         self.z_space = z_space
-        self.z_pos = None
+        self.z_pos = {}
         self.all_cells = None
         self.cell_names = None
         self.all_genes = None
@@ -1587,4 +1624,7 @@ class Embryo:
         if str(data_path).split('.')[-1] == 'h5ad':
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
-                              store_anndata=store_anndata)
+                              store_anndata=store_anndata, 
+                              tissue_id=tissue_id, array_id=array_id,
+                              pos_id=pos_id, pos_reg_id=pos_reg_id,
+                              gene_name_id=gene_name_id)
