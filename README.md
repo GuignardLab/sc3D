@@ -32,7 +32,7 @@ The dataset necessary to run the tests and look at the results can be downloaded
 
 ## Installation
 
-We strongly advise to use virtual environments to install this package. For example:
+We strongly advise to use virtual environments to install this package. For example using conda or miniconda:
 
 ```shell
 conda create -n sc-3D
@@ -56,10 +56,10 @@ cd sc3D
 pip install .
 ```
 
-### Troubleshooting for latest M1 MacOs ships.
-If working with an M1 ship, it is possible that all the necessary libraries are not yet available from the usual channels.
+### Troubleshooting for latest M1 MacOs chips.
+If working with an M1 chip, it is possible that all the necessary libraries are not yet available from the usual channels.
 
-To overcome this issue we recommand to manually install the latest, GitHub version __sc3D__ using [miniforge](https://github.com/conda-forge/miniforge) instead of anaconda or miniconda.
+To overcome this issue we recommand to manually install the latest, GitHub version of __sc3D__ using [miniforge](https://github.com/conda-forge/miniforge) instead of anaconda or miniconda.
 
 Once miniforge is installed and working, you can run the following commands:
 ```shell
@@ -71,7 +71,7 @@ to create your environment, then:
 ```shell
 git clone https://github.com/GuignardLab/sc3D.git
 cd sc3D
-conda install scipy numpy matplotlib pandas seaborn anndata napari
+conda install pip scipy numpy matplotlib pandas seaborn anndata napari
 pip install .
 ```
 
@@ -89,9 +89,16 @@ To import some data:
 
 **Note: at the time being, the following conventions are expected:**
 - **the x-y coordinates are stored in `data.obsm['X_spatial']`**
-- **the array number should be stored in `data.obs['orig.ident']` in the format `"{digits}_{array_id:digit}"`**
+- **the array number should be stored in `data.obs['orig.ident']` in the format `".*_[0-9]*"` where the digits after the underscore (`_`) are the id of the array**
 - **the tissue type has to be stored in `data.obs['predicted.id']`**
 - **the gene names have to be stored as indices or in `data.var['feature_name']`**
+
+Since version `0.1.2`, one can specify the name of the columns where the different necessary informations are stored using the following parameters:
+- `tissue_id` to inform the tissue id column
+- `array_id` to inform the array/puck/slice id column
+- `pos_id` to inform the position column (an `x, y` position is expected within this given column)
+- `gene_name_id` to inform the gene name column
+- `pos_reg_id` when to inform the registered position column (an `x, y, z` position is expected within this given column)
 
 ```python
 # To read the data
@@ -104,6 +111,9 @@ embryo.removing_spatial_outliers(th=outlier_threshold)
 # spline interpolations
 embryo.reconstruct_intermediate(embryo, th_d=th_d,
                                 genes=genes_of_interest)
+
+# To save the dataset as a registered dataset (to then look at it in the 3D visualizer)
+embryo.save_anndata('path/to/out/registered.h5ad')
 
 # To compute the 3D differential expression for selected tissues
 tissues_to_process = [5, 10, 12, 18, 21, 24, 30, 31, 33, 34, 39]
@@ -136,7 +146,7 @@ Note that the test dataset is not included in this repository put can be downloa
 
 # Visualiser
 
-Quick start (from scratch):
+"Quick" start (from scratch):
 ## Installation
 ### 1. Installing miniconda
 In order to help a smooth installation, one can use miniconda (that is what we do).
@@ -148,14 +158,12 @@ In a nutshell, from a terminal, the following lines could work for MacOs:
 curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh > Miniconda3-latest-MacOSX-x86_64.sh
 bash Miniconda3-latest-MacOSX-x86_64.sh
 ```
-and then answering the required questions.
 
 Similarly, for Linux one could install miniconda by running the following commands:
 ```shell
 curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh > Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh
 ```
-and then answering the required questions.
 
 ### 2. Installing the visualiser
 Once miniconda is installed one can install the visualiser.
@@ -173,7 +181,7 @@ cd path/to/sc3D
 
 Once there it is probably better to create a virtual environment thanks to miniconda:
 ```shell
-conda create -n sc3D python=3.9
+conda create -n sc3D python">=3.9"
 ```
 Then activate it:
 ```shell
@@ -200,7 +208,7 @@ To run the visualiser, you want to
 - start the visualiser by typing: `sc3D-visualiser` (from anywhere in a terminal)
 
 Then you can load the dataset and play with it.
-The `h5ad` file can be find [there].
+The `h5ad` file can be find [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private).
 The `Tissue name` file can be find in `data/corresptissues.json`.
 
 **"Have fun"**
