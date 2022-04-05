@@ -10,7 +10,7 @@ This code was developed in the context of the following study:
 
 The __sc3D__ code is based on the [anndata](https://anndata.readthedocs.io/en/latest/) and [Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
 
-The dataset necessary to run the tests and look at the results can be downloaded [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private) (it is under the name `mouse_embryo_E8.5_merged_data`).
+The dataset necessary to run the tests and look at the results can be downloaded [there](https://figshare.com/s/9c73df7fd39e3ca5422d) for the unregistered dataset (and test the provided algorithms) and [there](https://figshare.com/s/1c29d867bc8b90d754d2) for the already registered atlas to browse with our visualiser.
 
 ## Description of the GitHub repository
 
