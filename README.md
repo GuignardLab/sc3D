@@ -200,6 +200,28 @@ pip install .
 
 Now, the visualiser is installed, you **should** close your terminal (even if you plan on using the visualiser directly, you will need to open a new terminal anyway).
 
+### 2.1 Troubleshooting for latest M1 MacOs chips.
+If working with an M1 chip, it is possible that all the necessary libraries are not yet available from the usual channels.
+
+To overcome this issue we recommand to manually install the latest, GitHub version of __sc3D__ using [miniforge](https://github.com/conda-forge/miniforge) instead of anaconda or miniconda.
+
+Once miniforge is installed and working, you can run the following commands:
+```shell
+conda create -n sc-3D
+conda activate sc-3D
+```
+
+to create your environment, then:
+```shell
+git clone https://github.com/GuignardLab/sc3D.git
+cd sc3D
+conda install pip scipy numpy matplotlib pandas seaborn anndata napari
+pip install .
+```
+
+If the previous commands are still not working, it is possible that you need to install the `pkg-config` package. You can find some information on how to do it there: [install pkg-config](https://gist.github.com/jl/9e5ebbc9ccf44f3c804e)
+
+
 ### 3. Running the visualiser
 
 To run the visualiser, you want to
