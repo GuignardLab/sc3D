@@ -128,14 +128,18 @@ class Embryo:
             orig = sorted(set(data.obs[array_id]))
             cs_to_remove = orig[:self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore:]
             data = data[~(data.obs[array_id].isin(cs_to_remove))]
-        data.raw = data.raw.to_adata()
+        if data.raw is not None:
+            data.raw = data.raw.to_adata()
+        else:
+            data.raw = data.copy()
         ids = range(len(data))
         self.all_cells = list(ids)
         self.cell_names = dict(zip(ids,
                                    map(lambda x, y: str.split(x, y)[-1],
                                        data.obs_names, '_'*len(data))))
-        self.pos = dict(zip(ids,
-                            data.obsm[pos_id]*xy_resolution))
+        if pos_id in data.obsm:
+            self.pos = dict(zip(ids,
+                                data.obsm[pos_id]*xy_resolution))
 
 
         self.tissue = dict(zip(ids,
