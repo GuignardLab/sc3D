@@ -144,12 +144,6 @@ class Embryo:
 
         self.tissue = dict(zip(ids,
                                data.obs[tissue_id].astype(int)))
-        cs = list(map(lambda x, y: int(str.split(x, y)[1]),
-                      data.obs[array_id],
-                      '_'*len(data.obs[array_id])))
-        self.cover_slip = dict(zip(ids, cs))
-
-            
         if gene_name_id in data.var:
             data.var.set_index(gene_name_id, inplace=True)
             if gene_name_id in data.raw.var:
@@ -164,16 +158,22 @@ class Embryo:
         self.all_genes = sorted(genes_of_interest)
         if 0<len(genes_of_interest):
             self.gene_expression = dict(zip(ids, np.array(data.raw[:, self.all_genes].X.A)))
+            self.data = data.raw[:, self.all_genes].X.A
         else:
             self.gene_expression = {id_:[] for id_ in ids}
 
-        for c, cs in self.cover_slip.items():
-            self.cells_from_cover_slip.setdefault(cs, set()).add(c)
+        if array_id in data.obs_keys():
+            cs = list(map(lambda x, y: int(str.split(x, y)[1]),
+                          data.obs[array_id],
+                          '_'*len(data.obs[array_id])))
+            self.cover_slip = dict(zip(ids, cs))
+            for c, cs in self.cover_slip.items():
+                self.cells_from_cover_slip.setdefault(cs, set()).add(c)
+            self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
+
         for c, T in self.tissue.items():
             self.cells_from_tissue.setdefault(T, set()).add(c)
-        self.all_cover_slips = sorted(set(self.cells_from_cover_slip))
         self.all_tissues = set(self.cells_from_tissue)
-        self.data = data.raw[:, self.all_genes].X.A
         if store_anndata:
             self.anndata = data
         if pos_reg_id in data.obsm:
@@ -1551,7 +1551,7 @@ class Embryo:
                  store_anndata=False, z_space=30., 
                  tissue_id='predicted.id', array_id='orig.ident',
                  pos_id='X_spatial', pos_reg_id='X_spatial_registered',
-                 gene_name_id='feature_name'):
+                 gene_name_id='feature_name', umap_id='X_umap'):
         """
         Initialize an spatial single cell embryo
 
@@ -1594,6 +1594,9 @@ class Embryo:
             gene_name_id (str): string naming the column containing the gene names.
                 The gene names will be contained in `data.var[gene_name_id]`.
                 Default: 'feature_name'
+            umap_id (str): string naming the column containing the umap coordinates.
+                The umap coordinates will be contained in `data.obsm[umap_id]`.
+                Default: 'X_umap'
         """
         self.cells = set()
         self.pos = {}
@@ -1642,6 +1645,7 @@ class Embryo:
         self.whole_tissue_nb_N = None
         self.diff_expressed_3D = {}
         self.tissues_diff_expre_processed = None
+        self.umap_id = umap_id
 
 
         if str(data_path).split('.')[-1] == 'h5ad':
