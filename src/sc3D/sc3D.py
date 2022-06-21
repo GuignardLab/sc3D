@@ -677,7 +677,7 @@ class Embryo:
         self.cell_names = {k:self.cell_names[k] for k in self.filtered_cells}
         self.gene_expression = {k:self.gene_expression[k] for k in self.filtered_cells}
         l_all = list(self.all_cells)
-        if self.store_anndata:
+        if hasattr(self, 'anndata'):
             self.anndata = self.anndata[l_all]
             self.anndata.raw = self.anndata.raw.to_adata()
         for t, c in self.cells_from_cover_slip.items():
