@@ -1,5 +1,5 @@
 [tool.bumpver]
-current_version = "0.1.7"
+current_version = "0.1.8"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -14,5 +14,5 @@ push = false
     '__version__ = "{version}"',
 ]
 "setup.py" = [
-    'version={version}',
+    "version='{version}'"
 ]
