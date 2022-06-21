@@ -15,7 +15,7 @@ setup(
     name='sc-3D',
     author='Leo Guignard',
     author_email='leo.guignard@univ-amu.fr',
-    version='0.1.7',
+    version='0.1.9',
     description='Array alignment and 3D differential expression for 3D sc omics',
     long_description=long_description,
     long_description_content_type='text/markdown',
