@@ -788,7 +788,7 @@ class Embryo:
         all_trajs = {}
         if genes is not None and isinstance(genes, list):
             all_expr = {}
-        elif not isinstance(genes, list):
+        elif genes is not None and not isinstance(genes, list):
             print('The genes to process have to be in a `list`')
             genes = None
             all_expr = []
