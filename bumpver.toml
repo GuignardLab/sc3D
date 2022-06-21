@@ -1,0 +1,18 @@
+[tool.bumpver]
+current_version = "0.1.7"
+version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"bumpver.toml" = [
+    'current_version = "{version}"',
+]
+"src/sc3D/__init__.py" = [
+    '__version__ = "{version}"',
+]
+"setup.py" = [
+    'version={version}',
+]
