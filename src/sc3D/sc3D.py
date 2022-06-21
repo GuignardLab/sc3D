@@ -1,8 +1,9 @@
 #!python
-# This file is subject to the terms and conditions defined in
-# file 'LICENCE', which is part of this source code package.
-# Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
-
+"""
+This file is subject to the terms and conditions defined in
+file 'LICENCE', which is part of this source code package.
+Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
+"""
 from collections import Counter
 from itertools import combinations
 
@@ -531,7 +532,7 @@ class Embryo:
                             val.append(D)
                         else:
                             val.append(True)
-                            val.append(True)                        
+                            val.append(True)
             final_GG = sp.sparse.coo_array((val, (X, Y)), shape=(max(node_ids)+1, max(node_ids)+1))
             final_GG = final_GG.tocsr()
 
@@ -544,7 +545,7 @@ class Embryo:
         The smoothed expression (\(s_c \) of the gene $g$ of a cell $c$ which has
         a set of neighbors $N_c = \{n_i\}$ is computed as follow:
             $$s_c = \\frac{\sum_{n_i \in N_c} ||n_i - c||.g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}$$
-        where $||n_i - c||$ is the distance between $n_i$ and $c$ and $g_{n_i}$ is the measured 
+        where $||n_i - c||$ is the distance between $n_i$ and $c$ and $g_{n_i}$ is the measured
         expression intensity of the gene $g$ in the cell $n_i$.
         The result is stored in `self.anndata.raw` in place of the previous raw data if required.
         Otherwise, the smoothed matrix is returned.
@@ -559,7 +560,7 @@ class Embryo:
                 new smoothed matrix will be returned. Default: `True`
 
         Returns:
-            
+
         """
         ids, pos = list(zip(*self.pos_3D.items()))
         GG = self.build_gabriel_graph(ids, pos, 'adj-mat', dist=True)
@@ -1548,7 +1549,7 @@ class Embryo:
                  corres_tissue=None, tissue_weight=None,
                  xy_resolution=1, genes_of_interest=None,
                  nb_CS_begin_ignore=0, nb_CS_end_ignore=0,
-                 store_anndata=False, z_space=30., 
+                 store_anndata=False, z_space=30.,
                  tissue_id='predicted.id', array_id='orig.ident',
                  pos_id='X_spatial', pos_reg_id='X_spatial_registered',
                  gene_name_id='feature_name', umap_id='X_umap'):
@@ -1651,7 +1652,7 @@ class Embryo:
         if str(data_path).split('.')[-1] == 'h5ad':
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
-                              store_anndata=store_anndata, 
+                              store_anndata=store_anndata,
                               tissue_id=tissue_id, array_id=array_id,
                               pos_id=pos_id, pos_reg_id=pos_reg_id,
                               gene_name_id=gene_name_id)
