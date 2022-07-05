@@ -141,10 +141,16 @@ class Embryo:
         if pos_id in data.obsm:
             self.pos = dict(zip(ids,
                                 data.obsm[pos_id]*xy_resolution))
+        try:
+            self.tissue = dict(zip(ids,
+                                   data.obs[tissue_id].astype(int)))
+        except:
+            tissues = data.obs[tissue_id].unique()
+            tissue_map = dict(zip(tissues, range(len(tissues))))
+            self.tissue = dict(zip(ids,
+                                   map(tissue_map.get, data.obs[tissue_id])))
 
 
-        self.tissue = dict(zip(ids,
-                               data.obs[tissue_id].astype(int)))
         if gene_name_id in data.var:
             data.var.set_index(gene_name_id, inplace=True)
             if gene_name_id in data.raw.var:
