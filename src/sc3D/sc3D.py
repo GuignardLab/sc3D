@@ -851,7 +851,8 @@ class Embryo:
         self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
                             for c in self.all_cells}
         self.all_trajs = all_trajs
-        self.all_expr = all_expr
+        if genes is not None:
+            self.all_expr = all_expr
 
     def plot_slice(self, angle, color_map=None, rot_orig=None, origin=None,
                    thickness=30, tissues=None, angle_unit='degree',
