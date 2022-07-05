@@ -633,7 +633,7 @@ class Embryo:
             cells = self.cells_from_cover_slip[cs]
         elif cells is None:
             cells = [c for c in self.cells_from_cover_slip[cs] if self.tissue[c] in tissues_to_plot]
-        positions = np.array([positions_attr[c] for c in cells])
+        positions = np.array([positions_attr[c][:2] for c in cells])
         tissues = [self.tissue[c] for c in cells]
         if len(positions)<1:
             return fig, ax
