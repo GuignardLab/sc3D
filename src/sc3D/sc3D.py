@@ -6,6 +6,7 @@ Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 from collections import Counter
 from itertools import combinations
+import re
 
 import numpy as np
 import scipy as sp
@@ -83,6 +84,7 @@ class Embryo:
                      store_anndata=False,
                      tissue_id='predicted.id',
                      array_id='orig.ident',
+                     array_id_num_pos=-1,
                      pos_id='X_spatial',
                      pos_reg_id='X_spatial_registered',
                      gene_name_id='feature_name'):
@@ -107,10 +109,14 @@ class Embryo:
                 Default: 'predicted.id'
             array_id (str): string naming the column containing the array/puck/slice
                 id. It will determine the `z` position of the cell.
-                The array id will be contained in `data.obs[array_id]` in the format
-                '.*_[0-9]*' where everything after the underscore (`_`) is considered
-                as the id number of the array.
+                The array id will be contained in `data.obs[array_id]` as a number.
+                The number has to always be at the same position in the `str`,
+                a position that is determined by `array_id_num_pos`. For example
+                '20220101_4' with a `array_id_num_pos==1` will give an array id
+                of `4`.
                 Default: 'predicted.id'
+            array_id_num_pos (int): See `array_id`.
+                Default: -1 (last number in the sequence)
             pos_id (str): string naming the column containing the x, y positions. The
                 x, y positions will be contained in `data.obsm[pos_id]`.
                 Default: 'X_spatial'
@@ -170,9 +176,12 @@ class Embryo:
             self.gene_expression = {id_:[] for id_ in ids}
 
         if array_id in data.obs_keys():
-            cs = list(map(lambda x, y: int(str.split(x, y)[1]),
-                          data.obs[array_id],
-                          '_'*len(data.obs[array_id])))
+            if data.obs[array_id].dtype != int:
+                exp = re.compile('[0-9]+')
+                cs = list(map(lambda x: int(exp.findall(x)[-1]),
+                              data.obs[array_id]))
+            else:
+                cs = data.obs[array_id]
             self.cover_slip = dict(zip(ids, cs))
             for c, cs in self.cover_slip.items():
                 self.cells_from_cover_slip.setdefault(cs, set()).add(c)
