@@ -711,7 +711,7 @@ class Embryo:
         self.GG_cs = {}
         self.KDT_cs = {}
         if timing:
-            import time
+            from time import time
             start = current_time = time()
             times = []
         for i, cs1 in enumerate(cs_to_treat[:-1]):
