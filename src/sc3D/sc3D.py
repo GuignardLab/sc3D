@@ -701,7 +701,7 @@ class Embryo:
             c.intersection_update(self.filtered_cells)
 
     def registration_3d(self, rigid=True,
-                        th_d=True, cs=None):
+                        th_d=True, cs=None, timing=False):
         if cs is not None:
             cs_to_treat = cs
         else:
@@ -710,9 +710,21 @@ class Embryo:
             self.set_zpos()
         self.GG_cs = {}
         self.KDT_cs = {}
+        if timing:
+            import time
+            start = current_time = time()
+            times = []
         for i, cs1 in enumerate(cs_to_treat[:-1]):
             cs2 = cs_to_treat[i+1]
             self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+            if timing:
+                times.append([cs1, cs2, time() - current_time])
+                current_time = time()
+
+        if timing:
+            times.append([-1, -1, time() - start])
+            np.savetxt('timing.txt', times)
+
         self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
                             for c in self.all_cells}
 
