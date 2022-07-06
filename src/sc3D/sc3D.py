@@ -700,6 +700,22 @@ class Embryo:
         for t, c in self.cells_from_tissue.items():
             c.intersection_update(self.filtered_cells)
 
+    def registration_3d(self, rigid=True,
+                        th_d=True, cs=None):
+        if cs is not None:
+            cs_to_treat = cs
+        else:
+            cs_to_treat = self.all_cover_slips
+        if self.z_pos is None or set(self.z_pos)!=set(self.all_cells):
+            self.set_zpos()
+        self.GG_cs = {}
+        self.KDT_cs = {}
+        for i, cs1 in enumerate(cs_to_treat[:-1]):
+            cs2 = cs_to_treat[i+1]
+            self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+        self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
+                            for c in self.all_cells}
+
     def reconstruct_intermediate(self, rigid=True,
                                  th_d=True, cs=None,
                                  multicore=True, genes=None):
@@ -721,6 +737,8 @@ class Embryo:
             genes ([str, ]): gene names that will be interpolated
         """
         disapear_bounds = (.1, .5, .9)
+        if not hasattr(self, 'final'):
+            self.registration_3d(rigid=rigid, th_d=th_d, cs=cs)
         if cs is not None:
             cs_to_treat = cs
         else:
@@ -848,8 +866,6 @@ class Embryo:
 
             all_trajs[traj[0]] = [min(z_traj), max(z_traj), f_traj_x, f_traj_y]
             cells_to_treat -= set(traj)
-        self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
-                            for c in self.all_cells}
         self.all_trajs = all_trajs
         if genes is not None:
             self.all_expr = all_expr
