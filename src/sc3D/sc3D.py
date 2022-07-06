@@ -723,7 +723,16 @@ class Embryo:
 
         if timing:
             times.append([-1, -1, time() - start])
-            np.savetxt('timing.txt', times)
+            if isinstance(timing, str) or isinstance(timing, Path):
+                p = Path(timing)
+                if p.is_dir() and p.exists():
+                    np.savetxt(p / 'timing.txt', times)
+                elif p.parent.exists():
+                    np.savetxt(p, times)
+                elif p.parent.mkdir():
+                    np.savetxt(p, times)
+            else:
+                np.savetxt('timing.txt', times)
 
         self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
                             for c in self.all_cells}
