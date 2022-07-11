@@ -192,7 +192,7 @@ class Embryo:
         if array_id in data.obs_keys():
             if data.obs[array_id].dtype != int:
                 exp = re.compile('[0-9]+')
-                cs = list(map(lambda x: int(exp.findall(x)[-1]),
+                cs = list(map(lambda x: int(exp.findall(x)[array_id_num_pos]),
                               data.obs[array_id]))
             else:
                 cs = data.obs[array_id]
@@ -1718,7 +1718,7 @@ class Embryo:
         self.umap_id = umap_id
 
 
-        if str(data_path).split('.')[-1] == 'h5ad':
+        if Path(data_path).suffix in ['h5ad', 'h5', 'csv']:
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
                               store_anndata=store_anndata,
