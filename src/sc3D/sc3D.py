@@ -1837,6 +1837,7 @@ class Embryo:
         self.diff_expressed_3D = {}
         self.tissues_diff_expre_processed = None
         self.umap_id = umap_id
+        self.array_id = array_id
 
 
         if Path(data_path).suffix in ['.h5ad', '.h5', '.csv']:
