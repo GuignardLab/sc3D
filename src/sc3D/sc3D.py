@@ -141,7 +141,7 @@ class Embryo:
             for i, p in enumerate(pathes[1:]):
                 to_add = anndata.read_h5ad(p)
                 to_add.obs[array_id] = [i+2,]*to_add.shape[0]
-                data = anndata.concat([data, ])
+                data = anndata.concat([data, to_add])
 
         if tissues_to_ignore is not None:
             data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
