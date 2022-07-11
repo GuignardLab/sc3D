@@ -746,7 +746,9 @@ class Embryo:
         return (trsf @ flo_pad)[:-1]
 
     def registration_3d(self, rigid=True, th_d=True,
-                        cs=None, timing=False, method=None):
+                        cs=None, timing=False, method=None,
+                        min_counts_genes=15,
+                        min_counts_cells=100):
         """
         Compute the 3D registration of the dataset and store the result in
         `self.pos_3D`
@@ -776,6 +778,8 @@ class Embryo:
                 https://doi.org/10.1038/s41592-022-01459-6).
                 If None then the default method used is `'sc3D'`.
                 Default: None
+            min_counts_genes (int): threshold for the PASTE method
+            min_counts_cells (int): threshold for the PASTE method
         """
         if cs is not None:
             cs_to_treat = cs
