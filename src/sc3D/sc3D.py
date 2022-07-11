@@ -720,42 +720,145 @@ class Embryo:
         for t, c in self.cells_from_tissue.items():
             c.intersection_update(self.filtered_cells)
 
-    def registration_3d(self, rigid=True,
-                        th_d=True, cs=None, timing=False):
+    @staticmethod
+    def __apply_trsf(M, trans, points):
+        """
+        Apply a rotation from a 2x2 rotation matrix `M` together with
+        a translation from a translation vector of length 2 `trans` to a list of
+        `points`
+
+        Args:
+            M (nd.array): a 2x2 rotation matrix
+            trans (nd.array): a translation vector of length 2
+            points (nd.array): a nx2 array of `n` points 2D positions
+
+        Returns:
+            (nd.array) a 2xn matrix of the `n` points transformed
+        """
+        trsf = np.identity(3)
+        trsf[:-1, :-1] = M
+        tr = np.identity(3)
+        tr[:-1, -1] = -trans
+        trsf = trsf @ tr
+
+        flo = points.T
+        flo_pad = np.pad(flo, ((0, 1), (0, 0)), constant_values=1)
+        return (trsf @ flo_pad)[:-1]
+
+    def registration_3d(self, rigid=True, th_d=True,
+                        cs=None, timing=False, method=None):
+        """
+        Compute the 3D registration of the dataset and store the result in
+        `self.pos_3D`
+
+        Args:
+            rigid (bool): whether looking for a rigid transformation or an affine
+                one. Note that it is NOT recommended to look for an affine
+                transformation since it will change the geometry of the slices.
+                Default: True
+            th_d (bool | float): threshold above which a pairing is discarded.
+                If th_d is a boolean, then the threshold is the median of the
+                distribution of all the distances. If th_d is a float the value
+                given is used as a threshold.
+                Usually used as a float.
+                Default: True
+            cs ([p_id, ]): list of array ids to treat. If None, then all the arrays
+                are treated.
+                Default: None
+            timing (bool | str | Path): whether to save the timing of the array alignments.
+                If False it is not saved. If True it is saved in a file named `timing.txt`.
+                If it is a string it is save in the folder described by the string
+                (creating it/them if necessary).
+                Default: False
+            method (str [None, 'sc3D', 'paste']): method to use to perform the alignment.
+                If `'paste'` is asked, the `paste` library must be installed first (from
+                Zeira et al. Nat Methods 19, 567–575 (2022).
+                https://doi.org/10.1038/s41592-022-01459-6).
+                If None then the default method used is `'sc3D'`.
+                Default: None
+        """
         if cs is not None:
             cs_to_treat = cs
         else:
             cs_to_treat = self.all_cover_slips
         if self.z_pos is None or set(self.z_pos)!=set(self.all_cells):
             self.set_zpos()
-        self.GG_cs = {}
-        self.KDT_cs = {}
         if timing:
             from time import time
             start = current_time = time()
             times = []
-        for i, cs1 in enumerate(cs_to_treat[:-1]):
-            cs2 = cs_to_treat[i+1]
-            self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
-            if timing:
-                times.append([cs1, cs2, time() - current_time])
+        if isinstance(method, str) and method.lower() == 'paste':
+            import scanpy as sc
+            import paste as pst
+            self.data.obsm['spatial'] = self.data.obsm[pos_id]
+            if work_with_raw:
+                raw_data = self.data.raw.to_adata()
+            else:
+                raw_data = self.data.copy()
+
+            if min_counts_genes != None:
+                filter_1 = sc.pp.filter_genes(raw_data, min_counts=min_counts_genes,
+                                              inplace=False)
+            if min_counts_cells != None:
+                if min_counts_genes != None:
+                    filter_2 = sc.pp.filter_cells(raw_data[:, filter_1[0]],
+                                                  min_counts=min_counts_cells)
+            M_raw_filtered = raw_data[filter_2[0], filter_1[0]].copy()
+
+            slices_id = sorted(self.all_cover_slips)
+            slices = []
+            for s_id in slices_id:
+                slices.append(M_raw_filtered[M_raw_filtered.obs[array_id]==s_id])
+            start = time()
+            times = []
+            pis = []
+            current_time = time()
+            for i, (s1, s2) in enumerate(zip(slices[:-1], slices[1:])):
+                pis.append(pst.pairwise_align(s1, s2))
+                times.append([i, i+1, time()-current_time])
                 current_time = time()
 
-        if timing:
-            times.append([-1, -1, time() - start])
-            if isinstance(timing, str) or isinstance(timing, Path):
-                p = Path(timing)
-                if p.is_dir() and p.exists():
-                    np.savetxt(p / 'timing.txt', times)
-                elif p.parent.exists():
-                    np.savetxt(p, times)
-                elif p.parent.mkdir():
-                    np.savetxt(p, times)
-            else:
-                np.savetxt('timing.txt', times)
+            new_slices, M, trans = pst.stack_slices_pairwise(slices, pis, output_params=True, matrix=True)
 
-        self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
-                            for c in self.all_cells}
+            times.append([-1, -1, time()-start])
+
+            for i, s_id in enumerate(slices_id):
+                if i == 0:
+                    m = np.identity(2)
+                else:
+                    m = M[i-1]
+                cell_slice = list(self.cells_from_cover_slip[s_id])
+                points = np.array([self.pos[c] for c in cell_slice])
+                registered = self.__apply_trsf(m, trans[i], points)
+                z_space = self.z_pos[cell_slice[0]]
+                reg_pos = np.vstack((registered, [z_space,]*registered.shape[1])).T
+                self.pos_3D.update(dict(zip(cell_slice, reg_pos)))
+        else:
+            self.GG_cs = {}
+            self.KDT_cs = {}
+            for i, cs1 in enumerate(cs_to_treat[:-1]):
+                cs2 = cs_to_treat[i+1]
+                self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+                if timing:
+                    times.append([cs1, cs2, time() - current_time])
+                    current_time = time()
+
+            if timing:
+                times.append([-1, -1, time() - start])
+                if isinstance(timing, str) or isinstance(timing, Path):
+                    p = Path(timing)
+                    if p.is_dir() and p.exists():
+                        np.savetxt(p / 'timing.txt', times)
+                    elif p.parent.exists():
+                        np.savetxt(p, times)
+                    elif p.parent.mkdir(parents=True):
+                        np.savetxt(p, times)
+                else:
+                    np.savetxt('timing.txt', times)
+
+            self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
+                           for c in self.all_cells}
+
 
     def reconstruct_intermediate(self, rigid=True,
                                  th_d=True, cs=None,
