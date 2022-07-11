@@ -748,7 +748,8 @@ class Embryo:
     def registration_3d(self, rigid=True, th_d=True,
                         cs=None, timing=False, method=None,
                         min_counts_genes=15,
-                        min_counts_cells=100):
+                        min_counts_cells=100,
+                        work_with_raw=True):
         """
         Compute the 3D registration of the dataset and store the result in
         `self.pos_3D`
@@ -780,6 +781,8 @@ class Embryo:
                 Default: None
             min_counts_genes (int): threshold for the PASTE method
             min_counts_cells (int): threshold for the PASTE method
+            work_with_raw (bool): whether to work with the raw data or not.
+                Only useful for the PASTE method
         """
         if cs is not None:
             cs_to_treat = cs
@@ -794,11 +797,10 @@ class Embryo:
         if isinstance(method, str) and method.lower() == 'paste':
             import scanpy as sc
             import paste as pst
-            self.data.obsm['spatial'] = self.data.obsm[pos_id]
             if work_with_raw:
-                raw_data = self.data.raw.to_adata()
+                raw_data = self.anndata.raw.to_adata()
             else:
-                raw_data = self.data.copy()
+                raw_data = self.anndata.copy()
 
             if min_counts_genes != None:
                 filter_1 = sc.pp.filter_genes(raw_data, min_counts=min_counts_genes,
@@ -806,26 +808,29 @@ class Embryo:
             if min_counts_cells != None:
                 if min_counts_genes != None:
                     filter_2 = sc.pp.filter_cells(raw_data[:, filter_1[0]],
-                                                  min_counts=min_counts_cells)
+                                                  min_counts=min_counts_cells,
+                                                  inplace=False)
             M_raw_filtered = raw_data[filter_2[0], filter_1[0]].copy()
 
             slices_id = sorted(self.all_cover_slips)
             slices = []
             for s_id in slices_id:
                 slices.append(M_raw_filtered[M_raw_filtered.obs[array_id]==s_id])
-            start = time()
+            if timing:
+                start = time()
             times = []
             pis = []
-            current_time = time()
+            if timing:
+                current_time = time()
             for i, (s1, s2) in enumerate(zip(slices[:-1], slices[1:])):
                 pis.append(pst.pairwise_align(s1, s2))
-                times.append([i, i+1, time()-current_time])
-                current_time = time()
+                if timing:
+                    times.append([i, i+1, time()-current_time])
+                    current_time = time()
 
             new_slices, M, trans = pst.stack_slices_pairwise(slices, pis, output_params=True, matrix=True)
-
-            times.append([-1, -1, time()-start])
-
+            if timing:
+                times.append([-1, -1, time()-start])
             for i, s_id in enumerate(slices_id):
                 if i == 0:
                     m = np.identity(2)
@@ -833,10 +838,11 @@ class Embryo:
                     m = M[i-1]
                 cell_slice = list(self.cells_from_cover_slip[s_id])
                 points = np.array([self.pos[c] for c in cell_slice])
-                registered = self.__apply_trsf(m, trans[i], points)
+                registered = apply_trsf(m, trans[i], points)
                 z_space = self.z_pos[cell_slice[0]]
                 reg_pos = np.vstack((registered, [z_space,]*registered.shape[1])).T
                 self.pos_3D.update(dict(zip(cell_slice, reg_pos)))
+
         else:
             self.GG_cs = {}
             self.KDT_cs = {}
@@ -849,19 +855,21 @@ class Embryo:
 
             if timing:
                 times.append([-1, -1, time() - start])
-                if isinstance(timing, str) or isinstance(timing, Path):
-                    p = Path(timing)
-                    if p.is_dir() and p.exists():
-                        np.savetxt(p / 'timing.txt', times)
-                    elif p.parent.exists():
-                        np.savetxt(p, times)
-                    elif p.parent.mkdir(parents=True):
-                        np.savetxt(p, times)
-                else:
-                    np.savetxt('timing.txt', times)
 
             self.pos_3D = {c: np.array(list(self.final[c])+[self.z_pos[c]])
                            for c in self.all_cells}
+
+        if timing:
+            if isinstance(timing, str) or isinstance(timing, Path):
+                p = Path(timing)
+                if p.is_dir() and p.exists():
+                    np.savetxt(p / 'timing.txt', times)
+                elif p.parent.exists():
+                    np.savetxt(p, times)
+                elif p.parent.mkdir(parents=True):
+                    np.savetxt(p, times)
+            else:
+                np.savetxt('timing.txt', times)
 
 
     def reconstruct_intermediate(self, rigid=True,
