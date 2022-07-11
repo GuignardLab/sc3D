@@ -148,7 +148,6 @@ class Embryo:
                     if s in path:
                         path = path.replace(s, '{0}')
                 pathes = [path.format(s) for s in sample_list]
-            print(pathes)
             data = anndata.read_h5ad(pathes[0])
             data.obs[array_id] = [1,]*data.shape[0]
             for i, p in enumerate(pathes[1:]):
@@ -856,8 +855,8 @@ class Embryo:
                 current_time = time()
             for i, (s1, s2) in enumerate(zip(slices[:-1], slices[1:])):
                 if pre_registration:
-                    pi0 = pst.match_spots_using_spatial_heuristic(s1.obsm['spatial'],
-                                                                  s2.obsm['spatial'],
+                    pi0 = pst.match_spots_using_spatial_heuristic(s1.obsm[self.pos_id],
+                                                                  s2.obsm[self.pos_id],
                                                                   use_ot=True)
                 else:
                     pi0 = None
@@ -1880,6 +1879,7 @@ class Embryo:
         self.tissues_diff_expre_processed = None
         self.umap_id = umap_id
         self.array_id = array_id
+        self.pos_id = pos_id
 
 
         if Path(data_path).suffix in ['.h5ad', '.h5', '.csv']:
