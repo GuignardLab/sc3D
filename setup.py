@@ -34,4 +34,7 @@ setup(
     install_requires=['scipy', 'numpy', 'matplotlib', 'pandas',
                       'seaborn', 'scikit-learn', 'anndata',
                       'transformations'],
+    extras_require={
+        'paste': ['paste-bio']
+    }
 )
