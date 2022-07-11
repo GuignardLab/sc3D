@@ -135,13 +135,20 @@ class Embryo:
                 `path/to/file_{0}.h5ad` where the slice id should be at the position
                 `{0}`. The code will call `path.format(sample_list[0])` for example.
         """
-        if sample_list is None or len(sample_list)<1:
+        if sample_list is None or len(sample_list)<=1:
             data = anndata.read(str(path))
         else:
+            path = str(path)
             if path[path.find('{'):].find('}') != -1:
                 pathes = [path.format(s) for s in sample_list]
-            else:
+            elif Path(sample_list[0]).exists():
                 pathes = sample_list
+            else:
+                for s in sample_list:
+                    if s in path:
+                        path = path.replace(s, '{0}')
+                pathes = [path.format(s) for s in sample_list]
+            print(pathes)
             data = anndata.read_h5ad(pathes[0])
             data.obs[array_id] = [1,]*data.shape[0]
             for i, p in enumerate(pathes[1:]):
@@ -749,7 +756,9 @@ class Embryo:
                         cs=None, timing=False, method=None,
                         min_counts_genes=15,
                         min_counts_cells=100,
-                        work_with_raw=True):
+                        work_with_raw=True,
+                        alpha=.1,
+                        pre_registration=True):
         """
         Compute the 3D registration of the dataset and store the result in
         `self.pos_3D`
@@ -795,22 +804,45 @@ class Embryo:
             start = current_time = time()
             times = []
         if isinstance(method, str) and method.lower() == 'paste':
-            import scanpy as sc
-            import paste as pst
+            try:
+                import paste as pst
+            except:
+                print('could not import PASTE, aborting')
+                return
+            try:
+                import scanpy as sc
+                sc_imp = True
+            except:
+                sc_imp = False
+                print('scanpy could not be loaded\nno filtering will be applied')
             if work_with_raw:
                 raw_data = self.anndata.raw.to_adata()
             else:
                 raw_data = self.anndata.copy()
-
-            if min_counts_genes != None:
-                filter_1 = sc.pp.filter_genes(raw_data, min_counts=min_counts_genes,
-                                              inplace=False)
-            if min_counts_cells != None:
+            if sc_imp:
                 if min_counts_genes != None:
-                    filter_2 = sc.pp.filter_cells(raw_data[:, filter_1[0]],
-                                                  min_counts=min_counts_cells,
+                    filter_1 = sc.pp.filter_genes(raw_data, min_counts=min_counts_genes,
                                                   inplace=False)
-            M_raw_filtered = raw_data[filter_2[0], filter_1[0]].copy()
+                if min_counts_cells != None:
+                    if min_counts_genes != None:
+                        filter_2 = sc.pp.filter_cells(raw_data[:, filter_1[0]],
+                                                      min_counts=min_counts_cells,
+                                                      inplace=False)
+                    else:
+                        filter_2 = sc.pp.filter_cells(raw_data,
+                                                      min_counts=min_counts_cells,
+                                                      inplace=False)
+                if min_counts_genes != None:
+                    if min_counts_cells != None:
+                        M_raw_filtered = raw_data[filter_2[0], filter_1[0]].copy()
+                    else:
+                        M_raw_filtered = raw_data[:, filter_1[0]].copy()
+                elif min_counts_cells != None:
+                    M_raw_filtered = raw_data[filter_2[0], :].copy()
+                else:
+                    M_raw_filtered = raw_data.copy()
+            else:
+                M_raw_filtered = raw_data.copy()
 
             slices_id = sorted(self.all_cover_slips)
             slices = []
@@ -823,7 +855,16 @@ class Embryo:
             if timing:
                 current_time = time()
             for i, (s1, s2) in enumerate(zip(slices[:-1], slices[1:])):
-                pis.append(pst.pairwise_align(s1, s2))
+                if pre_registration:
+                    pi0 = pst.match_spots_using_spatial_heuristic(s1.obsm['spatial'],
+                                                                  s2.obsm['spatial'],
+                                                                  use_ot=True)
+                else:
+                    pi0 = None
+                pis.append(pst.pairwise_align(s1, s2,
+                                              alpha=alpha,
+                                              G_init=pi0,
+                                              norm=True))
                 if timing:
                     times.append([i, i+1, time()-current_time])
                     current_time = time()
