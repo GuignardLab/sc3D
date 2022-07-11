@@ -828,7 +828,8 @@ class Embryo:
                     times.append([i, i+1, time()-current_time])
                     current_time = time()
 
-            new_slices, M, trans = pst.stack_slices_pairwise(slices, pis, output_params=True, matrix=True)
+            new_slices, M, trans = pst.stack_slices_pairwise(slices, pis, output_params=True,
+                                                             matrix=True)
             if timing:
                 times.append([-1, -1, time()-start])
             for i, s_id in enumerate(slices_id):
@@ -838,7 +839,7 @@ class Embryo:
                     m = M[i-1]
                 cell_slice = list(self.cells_from_cover_slip[s_id])
                 points = np.array([self.pos[c] for c in cell_slice])
-                registered = apply_trsf(m, trans[i], points)
+                registered = self.__apply_trsf(m, trans[i], points)
                 z_space = self.z_pos[cell_slice[0]]
                 reg_pos = np.vstack((registered, [z_space,]*registered.shape[1])).T
                 self.pos_3D.update(dict(zip(cell_slice, reg_pos)))
