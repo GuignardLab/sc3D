@@ -87,13 +87,14 @@ class Embryo:
                      array_id_num_pos=-1,
                      pos_id='X_spatial',
                      pos_reg_id='X_spatial_registered',
-                     gene_name_id='feature_name'):
+                     gene_name_id='feature_name',
+                     sample_list=None):
         """
         Reads and loads a 3D spatial single cell
         omics dataset from an anndata file.
 
         Args:
-            path (str): path to the csv file
+            path (str): path to the csv or h5ad file
             xy_resolution (float): resolution of the xy coordinates
             genes_of_interest (list of str): list of genes to load
                 genes_of_interest lists the genes that can then be
@@ -128,7 +129,16 @@ class Embryo:
                 The gene names will be contained in `data.var[gene_name_id]`.
                 Default: 'feature_name'
         """
-        data = anndata.read(str(path))
+        if sample_list is None or len(sample_list)<1:
+            data = anndata.read(str(path))
+        else:
+            if path[path.find('{'):].find('}') != -1:
+                pathes = [path.format(s) for s in sample_list]
+            else:
+                pathes = sample_list
+            data = anndata.read_h5ad(pathes[0])
+            for p in pathes[1:]:
+                data = anndata.concat([data, anndata.read_h5ad(p)])
         if tissues_to_ignore is not None:
             data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
@@ -1606,7 +1616,8 @@ class Embryo:
                  store_anndata=False, z_space=30.,
                  tissue_id='predicted.id', array_id='orig.ident',
                  pos_id='X_spatial', pos_reg_id='X_spatial_registered',
-                 gene_name_id='feature_name', umap_id='X_umap'):
+                 gene_name_id='feature_name', umap_id='X_umap',
+                 sample_list=None):
         """
         Initialize an spatial single cell embryo
 
@@ -1709,4 +1720,5 @@ class Embryo:
                               store_anndata=store_anndata,
                               tissue_id=tissue_id, array_id=array_id,
                               pos_id=pos_id, pos_reg_id=pos_reg_id,
-                              gene_name_id=gene_name_id)
+                              gene_name_id=gene_name_id,
+                              sample_list=sample_list)
