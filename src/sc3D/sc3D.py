@@ -137,8 +137,12 @@ class Embryo:
             else:
                 pathes = sample_list
             data = anndata.read_h5ad(pathes[0])
-            for p in pathes[1:]:
-                data = anndata.concat([data, anndata.read_h5ad(p)])
+            data.obs[array_id] = [1,]*data.shape[0]
+            for i, p in enumerate(pathes[1:]):
+                to_add = anndata.read_h5ad(p)
+                to_add.obs[array_id] = [i+2,]*to_add.shape[0]
+                data = anndata.concat([data, ])
+
         if tissues_to_ignore is not None:
             data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
