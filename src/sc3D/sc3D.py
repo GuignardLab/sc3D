@@ -815,7 +815,7 @@ class Embryo:
             slices_id = sorted(self.all_cover_slips)
             slices = []
             for s_id in slices_id:
-                slices.append(M_raw_filtered[M_raw_filtered.obs[array_id]==s_id])
+                slices.append(M_raw_filtered[M_raw_filtered.obs[self.array_id]==s_id])
             if timing:
                 start = time()
             times = []
