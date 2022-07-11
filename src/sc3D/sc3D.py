@@ -128,6 +128,12 @@ class Embryo:
             gene_name_id (str): string naming the column containing the gene names.
                 The gene names will be contained in `data.var[gene_name_id]`.
                 Default: 'feature_name'
+            sample_list (list): list of samples when the dataset is split in multiple
+                h5/h5ad files. It can either be the path to each file or the id of
+                the slice. When it is only the id of the slices, it is then expected
+                to have the file pattern in the `path` as follow for example:
+                `path/to/file_{0}.h5ad` where the slice id should be at the position
+                `{0}`. The code will call `path.format(sample_list[0])` for example.
         """
         if sample_list is None or len(sample_list)<1:
             data = anndata.read(str(path))
@@ -1718,7 +1724,7 @@ class Embryo:
         self.umap_id = umap_id
 
 
-        if Path(data_path).suffix in ['h5ad', 'h5', 'csv']:
+        if Path(data_path).suffix in ['.h5ad', '.h5', '.csv']:
             self.read_anndata(data_path, xy_resolution=xy_resolution,
                               genes_of_interest=genes_of_interest,
                               store_anndata=store_anndata,
