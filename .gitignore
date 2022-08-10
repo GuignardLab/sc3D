@@ -8,8 +8,8 @@ sc-3D
 src/*.egg-info
 src/sc3D/__pycache__
 
-data/*.h5ad
-data/corresp_brain.json
+data/_*.h5ad
+data/_*.json
 data/*.png
 .DS_Store
 */.DS_Store
