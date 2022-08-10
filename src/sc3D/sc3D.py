@@ -49,38 +49,6 @@ class Embryo:
             x, y = self.pos[c]
             self.pos_3D[c] = np.array([x, y, self.z_pos[c]])
 
-    def read_csv(self, path, xy_resolution=1, encoding=None):
-        """
-        Reads and loads a 3D spatial single cell
-        omics dataset from a csv file.
-
-        Args:
-            path (str): path to the csv file
-            xy_resolution (float): resolution of the xy coordinates
-        """
-        with open(path, encoding=encoding) as f:
-            lines = f.readlines()
-        cell_id = 0
-        self.all_cover_slips = set()
-        for l in lines[1:]:
-            x, y, z, cat = l.split(",")[1:]
-            x = eval(x)
-            y = eval(y)
-            z = int(z.split("_")[-1].replace('"', ""))
-            cat = eval(cat)
-
-            if not cat in self.tissues_to_ignore:
-                self.pos[cell_id] = np.array([x, y]) * xy_resolution
-                self.cover_slip[cell_id] = z
-                self.tissue[cell_id] = cat
-                self.cells_from_cover_slip.setdefault(z, set()).add(cell_id)
-                self.cells_from_tissue.setdefault(cat, set()).add(cell_id)
-
-                self.all_tissues.add(cat)
-                self.all_cover_slips.add(z)
-                cell_id += 1
-        self.all_cover_slips = sorted(self.all_cover_slips)
-
     def read_anndata(
         self,
         path,
