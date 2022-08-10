@@ -1,4 +1,5 @@
 from sc3D import Embryo
+import numpy as np
 
 def test_sc3D():
     em = Embryo('data/data_test.h5ad', store_anndata=True)
@@ -15,3 +16,8 @@ def test_sc3D():
                 tissue_id='layer_guess', pos_id='spatial', array_id='z',
                 z_space=30, store_anndata=True)
     em.produce_em()
+    em.registration_3d()
+    origin = np.mean([em.final[c] for c in em.all_cells], axis=0)
+    origin = np.hstack([origin, 80])
+    angles = np.array([-5., 5., 0.])
+    points_to_plot = em.plot_slice(angles, color_map='viridis', origin=origin, thickness=30, nb_interp=5)

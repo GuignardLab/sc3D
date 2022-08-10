@@ -1324,7 +1324,10 @@ class Embryo:
             np.hstack([points_to_plot, [[1]] * points_to_plot.shape[0]]) @ rot_composed
         )[:, :-1]
         if gene is None:
-            color_to_plot = np.array([color_map[c] for c in color[plan]])
+            if isinstance(color_map, dict):
+                color_to_plot = np.array([color_map[c] for c in color[plan]])
+            else:
+                color_to_plot = np.array([(0, 0, 0)]*len(color[plan]))
         elif not isinstance(gene, str):
             color_to_plot = final_C[plan]
         else:
