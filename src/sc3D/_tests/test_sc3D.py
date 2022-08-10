@@ -11,7 +11,7 @@ def test_sc3D():
     em.plot_volume_vs_neighbs(21)
     em.removing_spatial_outliers()
 
-    em = Embryo(f'data/test.h5ad',
+    em = Embryo(f'data/DLPFC.h5ad',
                 tissue_id='layer_guess', pos_id='spatial', array_id='z',
                 z_space=30, store_anndata=True)
     em.produce_em()
