@@ -14,3 +14,8 @@ data/*.png
 .DS_Store
 */.DS_Store
 */*/.DS_Store
+
+.coverage
+
+.vscode
+src/sc3D/_tests/__pycache__
