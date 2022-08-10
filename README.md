@@ -1,3 +1,9 @@
+[![License MIT](https://img.shields.io/pypi/l/test_Foo-Bar.svg?color=green)](https://github.com/GuignardLab/sc3D/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/test_Foo-Bar.svg?color=green)](https://pypi.org/project/sc-3D)
+[![Python Version](https://img.shields.io/pypi/pyversions/test_Foo-Bar.svg?color=green)](https://python.org)
+[![tests](https://github.com/GuignardLab/test_Foo-Bar/workflows/tests/badge.svg)](https://github.com/GuignardLab/sc3D/actions)
+[![codecov](https://codecov.io/gh/GuignardLab/test_Foo-Bar/branch/main/graph/badge.svg)](https://codecov.io/gh/GuignardLab/sc3D)
+
 # sc3D
 
 __sc3D__ is a Python library to handle 3D spatial transcriptomic datasets.
