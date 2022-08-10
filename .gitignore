@@ -9,6 +9,7 @@ src/*.egg-info
 src/sc3D/__pycache__
 
 data/_*.h5ad
+data/DLPF*.h5ad
 data/_*.json
 data/*.png
 .DS_Store
@@ -19,3 +20,4 @@ data/*.png
 
 .vscode
 src/sc3D/_tests/__pycache__
+*coverage*

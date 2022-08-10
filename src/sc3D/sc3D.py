@@ -1550,12 +1550,17 @@ class Embryo:
                 arrays containing gene expression of the genes queried in
                 `gene_list`
         """
+        if len(self.z_pos) == 0:
+            self.set_zpos
         old_spacing = sorted(set(self.z_pos.values()))
         new_spacing = np.linspace(
             min(old_spacing),
             max(old_spacing),
             len(old_spacing) + (len(old_spacing) - 1) * nb_intra,
         )
+
+        if self.all_trajs is None:
+            self.reconstruct_intermediate()
         points = []
         colors = []
         if gene_list is not None:
@@ -1830,12 +1835,14 @@ class Embryo:
                 is not saved
                 Default: None
         """
+        if self.tissues_diff_expre_processed is None:
+            self.tissues_diff_expre_processed = []
         tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
         if len(tmp_T) != 0:
             print("You asked to plot tissue(s) that were not already processed")
             print("The following tissue(s) will be ignored:")
             for t in tmp_T:
-                print(f"\t - id: {t}, name: {self.corres_tissue[t]}")
+                print(f"\t - id: {t}, name: {self.corres_tissue.get(t, t)}")
         tissues_to_process = list(
             set(tissues_to_process).intersection(self.tissues_diff_expre_processed)
         )
@@ -1844,6 +1851,7 @@ class Embryo:
         tissue_genes = {}
         genes_in = {}
         added_genes = 1 if repetition_allowed else 4
+        nb_genes = min([len(genes) for genes in self.diff_expressed_3D.values()])
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
             G_N = data_t.sort_values("Localization score")["Interesting gene row ID"][
@@ -1857,7 +1865,6 @@ class Embryo:
                 tissue_genes.setdefault(g, []).append(t)
                 gene_dict[(t, g)] = v
             genes_in[t] = list(G_N)
-
         if not repetition_allowed:
             dict_counter = Counter(genes_of_interest)
             acc = 0
@@ -1894,11 +1901,12 @@ class Embryo:
             fig = ax.get_figure()
         ax.imshow(values, interpolation="nearest", cmap="Reds")
         ax.set_xticks(range(len(tissue_order)))
-        ax.set_xticklabels([self.corres_tissue[t] for t in tissue_order], rotation=90)
+        ax.set_xticklabels([self.corres_tissue.get(t, t) for t in tissue_order], rotation=90)
         ax.set_yticks(range(values.shape[0]))
         if self.all_genes:
             ax.set_yticklabels(list(self.anndata.raw[:, genes_of_interest].var_names))
         else:
+            print(f'{values.shape[0]=}')
             ax.set_yticklabels(list(self.anndata[:, genes_of_interest].var_names))
         fig.tight_layout()
         if output_path is not None:
@@ -1937,9 +1945,9 @@ class Embryo:
                 Default: None
             kwargs are forwarded to the seaborn.scatterplot
         """
-        if not t in self.diff_expressed_3D:
+        if self.diff_expressed_3D is not None and t not in self.diff_expressed_3D:
             print(
-                f"The tissue {t} ({self.corres_tissue[t]}) has not been processed yet."
+                f"The tissue {t} ({self.corres_tissue.get(t, t)}) has not been processed yet."
             )
             print("No figure can be made.")
             return
@@ -1989,7 +1997,7 @@ class Embryo:
                         fontdict=dict(color="red", size=8, fontweight="bold"),
                         va="baseline",
                     )
-        ax.set_title(self.corres_tissue[t])
+        ax.set_title(self.corres_tissue.get(t, t))
         fig.tight_layout()
         if output_path is not None:
             output_path = Path(output_path)
@@ -2009,9 +2017,9 @@ class Embryo:
             order (`nb` x m pandas.DataFrame): DataFrame containing
                 the top `nb` localized genes.
         """
-        if not tissue in self.diff_expressed_3D:
+        if self.diff_expressed_3D is not None or tissue not in self.diff_expressed_3D:
             print(
-                f"The tissue {tissue} ({self.corres_tissue[tissue]}) has not been processed yet."
+                f"The tissue {tissue} ({self.corres_tissue.get(tissue, tissue)}) has not been processed yet."
             )
             print("No figure can be made.")
             return
