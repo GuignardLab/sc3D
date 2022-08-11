@@ -150,7 +150,7 @@ The notebooks should be self content.
 
 Note that the test dataset is not included in this repository put can be downloaded from [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private).
 
-# Visualiser
+<!-- # Visualiser
 
 "Quick" start (from scratch):
 ## Installation
@@ -239,4 +239,4 @@ Then you can load the dataset and play with it.
 The `h5ad` file can be find [there](https://cellxgene.cziscience.com/collections/d74b6979-efba-47cd-990a-9d80ccf29055/private).
 The `Tissue name` file can be find in `data/corresptissues.json`.
 
-**"Have fun"**
+**"Have fun"** -->
