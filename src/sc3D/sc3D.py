@@ -2049,7 +2049,7 @@ class Embryo:
                 The array id will be contained in `data.obs[array_id]` in the format
                 '.*_[0-9]*' where everything after the underscore (`_`) is considered
                 as the id number of the array.
-                Default: 'predicted.id'
+                Default: 'orig.ident'
             pos_id (str): string naming the column containing the x, y positions. The
                 x, y positions will be contained in `data.obsm[pos_id]`.
                 Default: 'X_spatial'
