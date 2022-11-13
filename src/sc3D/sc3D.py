@@ -134,8 +134,8 @@ class Embryo:
                 ] * to_add.shape[0]
                 data = anndata.concat([data, to_add])
 
-        if tissues_to_ignore is not None:
-            data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
+        # if tissues_to_ignore is not None:
+        #     data = data[~(data.obs[tissue_id].astype(int).isin(tissues_to_ignore))]
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
             orig = sorted(set(data.obs[array_id]))
             cs_to_remove = (
@@ -323,6 +323,7 @@ class Embryo:
             self.tissue_centers[cs] = {}
             tissues = {
                 t: cells.intersection(T) for t, T in self.cells_from_tissue.items()
+                if not t in self.tissues_to_ignore
             }
             tissues[-1] = cells
             for tissue, c_tissue in tissues.items():
@@ -360,6 +361,9 @@ class Embryo:
             "constant",
             constant_values=1,
         ).T
+        if not hasattr(self, 'init_trsf'):
+            self.init_trsf = {}
+        self.init_trsf[cs_flo] = M
         # applying the trsf
         new_pos = np.dot(M, pos)[:2].T
         # updating the position dictionary
@@ -426,7 +430,8 @@ class Embryo:
             self.pairing = {}
         pos_ref = []
         pos_flo = []
-        for tissue in self.all_tissues:
+        tissues_to_treat = [t for t in self.all_tissues if not t in self.tissues_to_ignore]
+        for tissue in tissues_to_treat:
             cells_cs1 = np.array(
                 [c for c in self.cells_from_cover_slip[cs1] if self.tissue[c] == tissue]
             )
@@ -943,7 +948,7 @@ class Embryo:
                     times.append([i, i + 1, time() - current_time])
                     current_time = time()
 
-            new_slices, M, trans = pst.stack_slices_pairwise(
+            _, M, trans = pst.stack_slices_pairwise(
                 slices, pis, output_params=True, matrix=True
             )
             if timing:
@@ -971,9 +976,10 @@ class Embryo:
         else:
             self.GG_cs = {}
             self.KDT_cs = {}
+            self.trsfs = {}
             for i, cs1 in enumerate(cs_to_treat[:-1]):
                 cs2 = cs_to_treat[i + 1]
-                self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+                self.trsfs[cs2] = self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
                 if timing:
                     times.append([cs1, cs2, time() - current_time])
                     current_time = time()
@@ -983,7 +989,7 @@ class Embryo:
 
             self.pos_3D = {
                 c: np.array(list(self.final[c]) + [self.z_pos[c]])
-                for c in self.all_cells
+                for c in self.all_cells if self.cover_slip[c] in cs_to_treat
             }
 
         if timing:
@@ -1638,7 +1644,7 @@ class Embryo:
         avg_nb_neighbs /= positive_cells.shape[1]
         return avg_nb_neighbs
 
-    def cell_groups(self, t, th_vol=0.025):
+    def cell_groups(self, t, th_vol=0.025, cells=None, nb_N=None):
         """
         Compute the local expression metric for each gene in a given tissue `t`
 
@@ -1659,7 +1665,10 @@ class Embryo:
             data = self.anndata.X.toarray()
         else:
             data = self.anndata.copy().X
-        cells = np.array([c for c in self.all_cells if self.tissue[c] == t])
+        if cells is None:
+            cells = np.array([c for c in self.all_cells if self.tissue[c] == t])
+        if nb_N is None:
+            nb_N = self.whole_tissue_nb_N[t]
 
         # Spliting the array to only have tissue *t* cells
         sub_data = data[cells]
@@ -1682,7 +1691,7 @@ class Embryo:
         avg_nb_neighbs = []
         for g in interesting_genes:
             nb_N_for_g = self.neighbs(g, sub_data, cells)
-            avg_nb_neighbs.append(nb_N_for_g / self.whole_tissue_nb_N[t])
+            avg_nb_neighbs.append(nb_N_for_g / nb_N)
         avg_nb_neighbs = np.array(avg_nb_neighbs)
 
         # Build a dataframe with the previously computed metrics
@@ -1718,7 +1727,7 @@ class Embryo:
         return data_plot
 
     def get_3D_differential_expression(
-        self, tissues_to_process, th_vol=0.025, all_genes=True
+        self, tissues_to_process, th_vol=0.025, all_genes=True, do_2D=False,
     ):
         """
         Compute the 3D spatial differential expression for a list of tissues and
@@ -1733,6 +1742,7 @@ class Embryo:
             all_genes (bool): True if all the genes should be considered.
                 Otherwise only the previously computed variable genes are
                 considered
+            do_2D (bool): Do the computation per 2D slice instead of in 3D
         Returns:
             self.diff_expressed_3D (dict t_id: pandas.DataFrame):
                 dictionary that maps a tissue to a pandas DataFrame containing
@@ -1822,7 +1832,8 @@ class Embryo:
         tissue_genes = {}
         genes_in = {}
         added_genes = 1 if repetition_allowed else 4
-        nb_genes = min([len(genes) for genes in self.diff_expressed_3D.values()])
+        if nb_genes is None:
+            nb_genes = min([len(genes) for genes in self.diff_expressed_3D.values()])
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
             G_N = data_t.sort_values("Localization score")["Interesting gene row ID"][
@@ -1877,7 +1888,6 @@ class Embryo:
         if self.all_genes:
             ax.set_yticklabels(list(self.anndata.raw[:, genes_of_interest].var_names))
         else:
-            print(f'{values.shape[0]=}')
             ax.set_yticklabels(list(self.anndata[:, genes_of_interest].var_names))
         fig.tight_layout()
         if output_path is not None:

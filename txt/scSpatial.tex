@@ -12,6 +12,7 @@
 \title{Array alignment and interpolation}
 
 \DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
 
 \begin{document}
 \maketitle
@@ -134,6 +135,42 @@ Because of the potential noise of the dataset, instead of taking the theoretical
 Then, for each gene, the distance to the linear regression is calculated which is the score for spatially expressed genes.
 The higher the score, the further the gene is from the expected value, and therefore the further it is from being randomly expressed in space, meaning that it is locally expressed.
 
+\section{Comparison to PASTE}
+\paragraph{}We compared the results of our inter-array registration algorithm to the ones of PASTE described in \cite{Zeira:2022}.
+The main difference between sc3D registration method and PASTE's is that our method relies heavily on the pre-annotation of the tissues of the dataset.
+PASTE on the other hand only uses RNAI counts per bead and finds the transformation that minimises the difference between paired beads across arrays.
+For that reason PASTE allows to perform array registration without having to pre-process the data as much as sc3D but sc3D is usually significantly faster since the optimisation part is done at a higher level.
+\paragraph{}To compare PASTE to sc3D we used both our dataset and the human dorsolateral prefrontal cortex (DLPFC) from \cite{Maynard:2021} that was used in the PASTE article.
+When we ran PASTE on the DLPFC dataset we used the optimal parameters provided by the article.
+When we ran PASTE on our dataset, we tried different parameterisation and kept the best.
+To compare our results to those of PASTE we used a similar metric than the one used in the PASTE article for non simulated datasets: the fraction of beads that have their closest bead in the neighbouring arrays belonging to the same tissue.
+To compute our accuracy metric, we first compute a pairing between beads of consecutive arrays.
+The pairing is a spatial proximity pairing where two beads are paired if they are closed spatially.
+Effectively we computed the optimal pairing \(\pi^\star\) over the set of all the possible pairings \(\Pi\) that minimises the sum of the distances between paired beads:
+\begin{equation}
+\pi^\star = \argmin_{\pi\in \Pi}\sum_{(b_{i,j}, b_{i+1,k})\in \pi} \left\Vert b_{i,j}, b_{i+1,k}\right\Vert_2
+\end{equation}
+where \((b_{i,j}, b_{i+1,k})\in \pi\) are two paired beads in \(\pi\). To do so we used the Hungarian algorithm that gives an optimal result.
+Given this pairing, we can now count the percentage of pairs that have the same tissue over the total number of pairs. The higher this percentage is, the better the alignment.
+Figures \ref{fig:qual-DLPFC} and \ref{fig:qual-Mouse} show the accuracy of the alignment between our method and PASTE.
+Note that for the DLPFC the results are similar and that for the mouse dataset sc3D performs better.
+It is important to keep in mind that the parameterization that we found for PASTE on our dataset might not be the best even though we tried to optimise it.
+\begin{figure}
+\center
+\includegraphics[width=0.8\textwidth]{figures/sc3D_vs_PASTE_DLPFC}
+\caption{\textbf{Quality of alignment for PASTE and sc3D methods for the DLPFC dataset.}}\label{fig:qual-DLPFC}
+\end{figure}
+\begin{figure}
+\center
+\includegraphics[width=0.8\textwidth]{figures/sc3D_vs_PASTE_Mouse}
+\caption{\textbf{Quality of alignment for PASTE and sc3D methods for our Mouse dataset at E8.5.} The subset of tissues for the second histogram is the following: Allantois, PP ectoderm, LPM, Somites, Heart, Brain, PSM, NMPs, Neural crest, Pharyngeal arch, Neural tube}\label{fig:qual-Mouse}
+\end{figure}
+\paragraph{}As another point of comparison, we recorded the time it took the two methods to align multiple arrays. We found our method to be one to two orders of magnitude faster (Figure \ref{fig:time-mouse}) on our dataset.
+\begin{figure}
+\center
+\includegraphics[width=0.8\textwidth]{figures/sc3D_vs_PASTE_time}
+\caption{\textbf{Processing time for the Mouse dataset}}\label{fig:time-mouse}
+\end{figure}
 \bibliographystyle{apalike}
 \bibliography{references}
 \end{document}
