@@ -1863,6 +1863,7 @@ class Embryo:
                     genes_of_interest.extend(genes_in[t][:nb_genes])
                 dict_counter = Counter(genes_of_interest)
                 acc += 1
+        nb_genes = min(nb_genes, len(genes_of_interest))
         values = np.zeros((nb_genes * len(tissues_to_process), len(tissues_to_process)))
         tissue_order = []
         for i, g in enumerate(genes_of_interest):
