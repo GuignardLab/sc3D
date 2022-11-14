@@ -28,13 +28,13 @@ The dataset necessary to run the tests and look at the results can be downloaded
 
 - README.md: this file
 
-- Test-embryo.ipynb: Basic read and write examples (many different ways of writing)
+- notebooks/Test-embryo.ipynb: Basic read and write examples (many different ways of writing)
 
-- Spatial-differential-expression.ipynb: a jupyter notebook with some examples on how to perform the spatial differential expression
+- notebooks/Spatial-differential-expression.ipynb: a jupyter notebook with some examples on how to perform the spatial differential expression
+
+- notebooks/Embryo-registration.ipynb: a jupyter notebook with an example on how to do the array registration
 
 - setup.py: Setup file to install the library
-
-- src/sc3D-visualiser: the script to run the visualiser (for specifics about the visualiser, please look directly [there](#Visualiser))
 
 ## Installation
 
