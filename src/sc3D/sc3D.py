@@ -1710,7 +1710,7 @@ class Embryo:
         b = regression.intercept
         a = regression.slope
         f = lambda x: a * x + b
-        data_plot["Localization score"] = np.abs(
+        data_plot["Localization score"] = -(
             data_plot[regression_y] - f(data_plot[regression_x])
         )
         data_plot["Interesting gene row ID"] = interesting_genes
@@ -2008,6 +2008,29 @@ class Embryo:
         data_plot = self.diff_expressed_3D[tissue]
         order = data_plot.sort_values("Localization score", ascending=False)[:nb]
         return order
+
+    def compute_volumes(self, tissues_to_treat=None, bead_size=(10, 10, 30)):
+        """
+        Computes the volumes of the tissues based on the number of beads and their size.
+
+        Args:
+            tissues_to_treat (list): Optional, default: `None`, list of tissues for which to compute the volumes.
+                If left to `None`, the volume for all the tissues are computed.
+            bead_size (tuple): Optional, default: `(10, 10, 30)`, distance between beads. Will be use to compute
+                the total volume.
+        
+        Returns:
+            {tissue_id (str): float}: dictionary that maps a tissue to its volume.
+        """
+        if tissues_to_treat is None:
+            tissues_to_treat = self.all_tissues
+
+        volumes = {}
+        bead_volume = np.product(bead_size)
+        for t in tissues_to_treat:
+            volumes[self.corres_tissue.get(t, t)] = len(self.cells_from_tissue.get(t, []))*bead_volume
+        
+        return pd.DataFrame(volumes, index=['Volume']).T
 
     def __init__(
         self,

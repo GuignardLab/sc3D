@@ -12,11 +12,11 @@ You can find it on the Guignard Lab GitHub page: [GuignardLab/sc3D](https://gith
 
 This code was developed in the context of the following study:
 
-**Spatial transcriptomic maps of whole mouse embryos reveal principles of neural tube patterning.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
+**Spatial transcriptomic maps of whole mouse embryos.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
 
 The __sc3D__ code is based on the [anndata](https://anndata.readthedocs.io/en/latest/) and [Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
 
-The dataset necessary to run the tests and look at the results can be downloaded [there](https://figshare.com/s/9c73df7fd39e3ca5422d) for the unregistered dataset (and test the provided algorithms) and [there](https://figshare.com/s/1c29d867bc8b90d754d2) for the already registered atlas to browse with our visualiser.
+The dataset necessary to run the tests and look at the results can be downloaded [there](https://figshare.com/s/9c73df7fd39e3ca5422d) for the unregistered dataset (and test the provided algorithms) and [there](https://figshare.com/s/1c29d867bc8b90d754d2) for the already registered atlas to browse with our visualiser. You can find the visualiser [there](https://www.github.com/guignardlab/napari-sc3d-viewer).
 
 ## Description of the GitHub repository
 
