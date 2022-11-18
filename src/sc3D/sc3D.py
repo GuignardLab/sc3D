@@ -655,7 +655,7 @@ class Embryo:
         product_n = product / dist_sum.reshape(-1, 1)
         product_sparse = sp.sparse.csr_array(product_n)
         tmp_raw = self.anndata.raw.to_adata()
-        tmp_raw.X = product_sparse
+        tmp_raw.X = product_sparse.toarray()
         if inplace:
             self.anndata.raw = tmp_raw
         else:
