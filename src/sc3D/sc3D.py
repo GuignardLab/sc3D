@@ -54,7 +54,6 @@ class Embryo:
         path,
         xy_resolution=1,
         genes_of_interest=None,
-        tissues_to_ignore=None,
         store_anndata=False,
         tissue_id="predicted.id",
         array_id="orig.ident",
@@ -1882,7 +1881,7 @@ class Embryo:
             fig, ax = plt.subplots(figsize=(5, max(5, round(1.5 * nb_genes))))
         if fig is None:
             fig = ax.get_figure()
-        ax.imshow(values, interpolation="nearest", cmap="Reds")
+        ax.imshow(values, interpolation="nearest", cmap="Reds", vmin=np.percentile(values, 2))
         ax.set_xticks(range(len(tissue_order)))
         ax.set_xticklabels([self.corres_tissue.get(t, t) for t in tissue_order], rotation=90)
         ax.set_yticks(range(values.shape[0]))

@@ -11,6 +11,8 @@ def test_sc3D():
     em.plot_top_3D_diff_expr_genes([21, 23], repetition_allowed=False)
     em.plot_volume_vs_neighbs(21)
     em.removing_spatial_outliers()
+    em.compute_volumes()
+    em.set_zpos()
 
     em = Embryo(f'data/DLPFC.h5ad',
                 tissue_id='layer_guess', pos_id='spatial', array_id='z',

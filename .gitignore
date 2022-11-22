@@ -12,6 +12,7 @@ _*.ipynb
 data/_*.h5ad
 data/_*.json
 data/*.png
+data/_*
 .DS_Store
 */.DS_Store
 */*/.DS_Store
