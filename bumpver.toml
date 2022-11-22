@@ -13,6 +13,6 @@ push = false
 "src/sc3D/__init__.py" = [
     '__version__ = "{version}"',
 ]
-"setup.py" = [
-    "version='{version}'"
+"setup.cfg" = [
+    "version = {version}"
 ]
