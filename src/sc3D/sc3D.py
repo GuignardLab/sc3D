@@ -1709,8 +1709,8 @@ class Embryo:
         b = regression.intercept
         a = regression.slope
         f = lambda x: a * x + b
-        data_plot["Localization score"] = -(
-            data_plot[regression_y] - f(data_plot[regression_x])
+        data_plot["Localization score"] = (
+            f(data_plot[regression_x]) - data_plot[regression_y]
         )
         data_plot["Interesting gene row ID"] = interesting_genes
         if self.all_genes:
@@ -1998,7 +1998,7 @@ class Embryo:
             order (`nb` x m pandas.DataFrame): DataFrame containing
                 the top `nb` localized genes.
         """
-        if self.diff_expressed_3D is not None or tissue not in self.diff_expressed_3D:
+        if self.diff_expressed_3D is None or tissue not in self.diff_expressed_3D:
             print(
                 f"The tissue {tissue} ({self.corres_tissue.get(tissue, tissue)}) has not been processed yet."
             )
