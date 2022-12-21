@@ -8,6 +8,9 @@
 
 __sc3D__ is a Python library to handle 3D spatial transcriptomic datasets.
 
+__To access the 3D viewer for sc3D datasets, you can go to the following link: [GuignardLab/napari-sc3D-viewer](https://github.com/GuignardLab/napari-sc3D-viewer)__
+
+
 You can find it on the Guignard Lab GitHub page: [GuignardLab/sc3D](https://github.com/GuignardLab/sc3D). In there you will be able to find jupyter notebooks giving examples about how to use the datasets.
 
 This code was developed in the context of the following study:
