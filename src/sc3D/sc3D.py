@@ -1773,8 +1773,7 @@ class Embryo:
         for t in tissues_to_process:
             if not (t, th_vol) in self.__diff_expr_processed:
                 self.__diff_expr_processed[(t, th_vol)] = self.cell_groups(t, th_vol=th_vol)
-            self.diff_expressed_3D[t] = self.__diff_expr_processed[(t, th_vol)]
-
+            self.diff_expressed_3D[t] = self.__diff_expr_processed[(t, th_vol)].copy()
 
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
