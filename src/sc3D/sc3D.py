@@ -1769,9 +1769,12 @@ class Embryo:
                 else:
                     self.whole_tissue_nb_N[t] = 0
 
+
         for t in tissues_to_process:
-            if not t in self.diff_expressed_3D:
-                self.diff_expressed_3D[t] = self.cell_groups(t, th_vol=th_vol)
+            if not (t, th_vol) in self.__diff_expr_processed:
+                self.__diff_expr_processed[(t, th_vol)] = self.cell_groups(t, th_vol=th_vol)
+            self.diff_expressed_3D[t] = self.__diff_expr_processed[(t, th_vol)]
+
 
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
@@ -2147,6 +2150,7 @@ class Embryo:
         self.umap_id = umap_id
         self.array_id = array_id
         self.pos_id = pos_id
+        self.__diff_expr_processed = {}
 
         if Path(data_path).suffix in [".h5ad", ".h5", ".csv"]:
             self.read_anndata(
