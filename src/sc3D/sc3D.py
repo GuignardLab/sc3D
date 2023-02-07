@@ -138,7 +138,8 @@ class Embryo:
         if self.nb_CS_begin_ignore != 0 or self.nb_CS_end_ignore != 0:
             orig = sorted(set(data.obs[array_id]))
             cs_to_remove = (
-                orig[: self.nb_CS_begin_ignore] + orig[-self.nb_CS_end_ignore :]
+                orig[: self.nb_CS_begin_ignore]
+                + orig[-self.nb_CS_end_ignore :]
             )
             data = data[~(data.obs[array_id].isin(cs_to_remove))]
         if data.raw is not None:
@@ -150,7 +151,11 @@ class Embryo:
         self.cell_names = dict(
             zip(
                 ids,
-                map(lambda x, y: str.split(x, y)[-1], data.obs_names, "_" * len(data)),
+                map(
+                    lambda x, y: str.split(x, y)[-1],
+                    data.obs_names,
+                    "_" * len(data),
+                ),
             )
         )
         if pos_id in data.obsm:
@@ -160,7 +165,9 @@ class Embryo:
         except:
             tissues = data.obs[tissue_id].unique()
             tissue_map = dict(zip(tissues, range(len(tissues))))
-            self.tissue = dict(zip(ids, map(tissue_map.get, data.obs[tissue_id])))
+            self.tissue = dict(
+                zip(ids, map(tissue_map.get, data.obs[tissue_id]))
+            )
 
         if gene_name_id in data.var:
             data.var.set_index(gene_name_id, inplace=True)
@@ -225,11 +232,15 @@ class Embryo:
 
         num_rows, num_cols = A.shape
         if num_rows != 2:
-            raise Exception(f"matrix A is not 2xN, it is {num_rows}x{num_cols}")
+            raise Exception(
+                f"matrix A is not 2xN, it is {num_rows}x{num_cols}"
+            )
 
         num_rows, num_cols = B.shape
         if num_rows != 2:
-            raise Exception(f"matrix B is not 2xN, it is {num_rows}x{num_cols}")
+            raise Exception(
+                f"matrix B is not 2xN, it is {num_rows}x{num_cols}"
+            )
 
         # find mean column wise
         centroid_A = np.mean(A, axis=1)
@@ -289,7 +300,9 @@ class Embryo:
             except Exception:
                 M = self.rigid_transform_2D(pos_flo.T, pos_ref.T)
         if apply:
-            pos = np.pad(pos_flo, ((0, 0), (0, 1)), "constant", constant_values=1).T
+            pos = np.pad(
+                pos_flo, ((0, 0), (0, 1)), "constant", constant_values=1
+            ).T
             new_pos = np.dot(M, pos)[:2].T
             return (M, new_pos)
         return M
@@ -321,7 +334,8 @@ class Embryo:
         for cs, cells in self.cells_from_cover_slip.items():
             self.tissue_centers[cs] = {}
             tissues = {
-                t: cells.intersection(T) for t, T in self.cells_from_tissue.items()
+                t: cells.intersection(T)
+                for t, T in self.cells_from_tissue.items()
                 if not t in self.tissues_to_ignore
             }
             tissues[-1] = cells
@@ -329,7 +343,9 @@ class Embryo:
                 if len(c_tissue) > 2:
                     pos = [self.centered_pos[ci] for ci in c_tissue]
                     for w in range(self.tissue_weight.get(tissue, 1)):
-                        self.tissue_centers[cs][(tissue, w)] = np.mean(pos, axis=0)
+                        self.tissue_centers[cs][(tissue, w)] = np.mean(
+                            pos, axis=0
+                        )
         return self.tissue_centers
 
     def build_and_apply_trsf_matrix(self, cs_ref, cs_flo):
@@ -346,21 +362,28 @@ class Embryo:
         tissues_flo = set(self.tissue_centers[cs_flo].keys())
         tissues_common = list(tissues_ref.intersection(tissues_flo))
         # getting the average position of the tissue to register
-        pos_flo = np.array([self.tissue_centers[cs_flo][t] for t in tissues_common])
+        pos_flo = np.array(
+            [self.tissue_centers[cs_flo][t] for t in tissues_common]
+        )
         # getting the average position of the reference tissue
-        pos_ref = np.array([self.tissue_centers_reg[cs_ref][t] for t in tissues_common])
+        pos_ref = np.array(
+            [self.tissue_centers_reg[cs_ref][t] for t in tissues_common]
+        )
         # computing the transformation
         M = self.rigid_transform_2D(pos_flo.T, pos_ref.T)
         # M = self.register(pos_flo, pos_ref)
 
         # preping the floating positions for the trsf
         pos = np.pad(
-            [self.centered_pos[ci] for ci in self.cells_from_cover_slip[cs_flo]],
+            [
+                self.centered_pos[ci]
+                for ci in self.cells_from_cover_slip[cs_flo]
+            ],
             ((0, 0), (0, 1)),
             "constant",
             constant_values=1,
         ).T
-        if not hasattr(self, 'init_trsf'):
+        if not hasattr(self, "init_trsf"):
             self.init_trsf = {}
         self.init_trsf[cs_flo] = M
         # applying the trsf
@@ -372,7 +395,10 @@ class Embryo:
 
         # preping the floating tissue centers
         pos = np.pad(
-            [self.tissue_centers[cs_flo][t] for t in self.tissue_centers[cs_flo]],
+            [
+                self.tissue_centers[cs_flo][t]
+                for t in self.tissue_centers[cs_flo]
+            ],
             ((0, 0), (0, 1)),
             "constant",
             constant_values=1,
@@ -429,13 +455,23 @@ class Embryo:
             self.pairing = {}
         pos_ref = []
         pos_flo = []
-        tissues_to_treat = [t for t in self.all_tissues if not t in self.tissues_to_ignore]
+        tissues_to_treat = [
+            t for t in self.all_tissues if not t in self.tissues_to_ignore
+        ]
         for tissue in tissues_to_treat:
             cells_cs1 = np.array(
-                [c for c in self.cells_from_cover_slip[cs1] if self.tissue[c] == tissue]
+                [
+                    c
+                    for c in self.cells_from_cover_slip[cs1]
+                    if self.tissue[c] == tissue
+                ]
             )
             cells_cs2 = np.array(
-                [c for c in self.cells_from_cover_slip[cs2] if self.tissue[c] == tissue]
+                [
+                    c
+                    for c in self.cells_from_cover_slip[cs2]
+                    if self.tissue[c] == tissue
+                ]
             )
             positions_cs1 = np.array(
                 [
@@ -446,7 +482,11 @@ class Embryo:
             )
             if refine:
                 positions_cs2 = np.array(
-                    [self.pos_reg_aff[c] for c in cells_cs2 if self.tissue[c] == tissue]
+                    [
+                        self.pos_reg_aff[c]
+                        for c in cells_cs2
+                        if self.tissue[c] == tissue
+                    ]
                 )
             else:
                 positions_cs2 = np.array(
@@ -494,7 +534,9 @@ class Embryo:
                     )
         return pos_ref, pos_flo
 
-    def register_cs(self, cs1, cs2, refine=False, rigid=False, final=False, th_d=None):
+    def register_cs(
+        self, cs1, cs2, refine=False, rigid=False, final=False, th_d=None
+    ):
         """
         Registers the puck `cs2` onto the puck `cs1`.
 
@@ -520,7 +562,8 @@ class Embryo:
             self.register_with_tissues()
         if (self.final is None) and final:
             self.final = {
-                c: self.centered_pos[c] for c in self.cells_from_cover_slip[cs1]
+                c: self.centered_pos[c]
+                for c in self.cells_from_cover_slip[cs1]
             }
         pos_ref, pos_flo = self.build_pairing(
             cs1, cs2, rebuild=False, refine=refine, th_d=th_d
@@ -532,8 +575,12 @@ class Embryo:
         if refine:
             positions_cs2 = np.array([self.pos_reg_aff[c] for c in cells_cs2])
         else:
-            positions_cs2 = np.array([self.registered_pos[c] for c in cells_cs2])
-        pos = np.pad(positions_cs2, ((0, 0), (0, 1)), "constant", constant_values=1).T
+            positions_cs2 = np.array(
+                [self.registered_pos[c] for c in cells_cs2]
+            )
+        pos = np.pad(
+            positions_cs2, ((0, 0), (0, 1)), "constant", constant_values=1
+        ).T
         new_pos = np.dot(M, pos)[:2].T
         new_pos = pos[:2].T
         self.pos_reg_aff.update(zip(cells_cs2, new_pos))
@@ -563,7 +610,9 @@ class Embryo:
                 to the list of neighboring node ids
         """
         if not data_struct in ["adj-dict", "adj-mat"]:
-            raise ValueError("Data structure for the Gabriel graph not understood")
+            raise ValueError(
+                "Data structure for the Gabriel graph not understood"
+            )
         tmp = Delaunay(pos)
         delaunay_graph = {}
 
@@ -601,7 +650,8 @@ class Embryo:
                 for ni in [n for n in neighbs if e1 < n]:
                     D = np.linalg.norm(pos[e1] - pos[ni])
                     if not any(
-                        np.linalg.norm((pos[ni] + pos[e1]) / 2 - pos[i]) < D / 2
+                        np.linalg.norm((pos[ni] + pos[e1]) / 2 - pos[i])
+                        < D / 2
                         for i in neighbs.intersection(delaunay_graph[ni])
                     ):
                         X.append(node_ids[e1])
@@ -647,7 +697,9 @@ class Embryo:
         """
         ids, pos = list(zip(*self.pos_3D.items()))
         GG = self.build_gabriel_graph(ids, pos, "adj-mat", dist=True)
-        GG = GG.astype(np.float32).toarray()  # Matrix multiplication "optimisation"
+        GG = GG.astype(
+            np.float32
+        ).toarray()  # Matrix multiplication "optimisation"
         gene_expr = self.anndata.raw.X.toarray()
         product = np.dot(GG, gene_expr)
         dist_sum = GG.sum(axis=1)
@@ -739,7 +791,9 @@ class Embryo:
             ]
         scatter = ax.scatter(*positions.T, c=color, **scatter_args)
         if legend:
-            ax.legend(handles=scatter.legend_elements()[0], labels=np.unique(tissues))
+            ax.legend(
+                handles=scatter.legend_elements()[0], labels=np.unique(tissues)
+            )
         return fig, ax
 
     def removing_spatial_outliers(self, th=0.2, n_components=3):
@@ -774,18 +828,24 @@ class Embryo:
 
             D = np.array([d for c, d in c_to_d.items()])
             gmm = mixture.GaussianMixture(
-                n_components=n_components, max_iter=1000, covariance_type="full"
+                n_components=n_components,
+                max_iter=1000,
+                covariance_type="full",
             ).fit(D.reshape(-1, 1))
             order = np.argsort(gmm.means_, axis=0)
             proba0 = gmm.predict_proba(D.reshape(-1, 1))[:, order[0, 0]]
             proba1 = gmm.predict_proba(D.reshape(-1, 1))[:, order[1, 0]]
-            self.filtered_cells.update(cells_final[(th < proba0) | (th < proba1)])
+            self.filtered_cells.update(
+                cells_final[(th < proba0) | (th < proba1)]
+            )
         self.all_cells = set(self.all_cells).intersection(self.filtered_cells)
         self.pos = {k: self.pos[k] for k in self.filtered_cells}
         self.tissue = {k: self.tissue[k] for k in self.filtered_cells}
         self.cover_slip = {k: self.cover_slip[k] for k in self.filtered_cells}
         self.cell_names = {k: self.cell_names[k] for k in self.filtered_cells}
-        self.gene_expression = {k: self.gene_expression[k] for k in self.filtered_cells}
+        self.gene_expression = {
+            k: self.gene_expression[k] for k in self.filtered_cells
+        }
         l_all = list(self.all_cells)
         if hasattr(self, "anndata"):
             self.anndata = self.anndata[l_all]
@@ -890,7 +950,9 @@ class Embryo:
                 sc_imp = True
             except:
                 sc_imp = False
-                print("scanpy could not be loaded\nno filtering will be applied")
+                print(
+                    "scanpy could not be loaded\nno filtering will be applied"
+                )
             if work_with_raw:
                 raw_data = self.anndata.raw.to_adata()
             else:
@@ -909,11 +971,15 @@ class Embryo:
                         )
                     else:
                         filter_2 = sc.pp.filter_cells(
-                            raw_data, min_counts=min_counts_cells, inplace=False
+                            raw_data,
+                            min_counts=min_counts_cells,
+                            inplace=False,
                         )
                 if min_counts_genes != None:
                     if min_counts_cells != None:
-                        M_raw_filtered = raw_data[filter_2[0], filter_1[0]].copy()
+                        M_raw_filtered = raw_data[
+                            filter_2[0], filter_1[0]
+                        ].copy()
                     else:
                         M_raw_filtered = raw_data[:, filter_1[0]].copy()
                 elif min_counts_cells != None:
@@ -926,7 +992,9 @@ class Embryo:
             slices_id = sorted(self.all_cover_slips)
             slices = []
             for s_id in slices_id:
-                slices.append(M_raw_filtered[M_raw_filtered.obs[self.array_id] == s_id])
+                slices.append(
+                    M_raw_filtered[M_raw_filtered.obs[self.array_id] == s_id]
+                )
             if timing:
                 start = time()
             times = []
@@ -941,7 +1009,9 @@ class Embryo:
                 else:
                     pi0 = None
                 pis.append(
-                    pst.pairwise_align(s1, s2, alpha=alpha, G_init=pi0, norm=True)
+                    pst.pairwise_align(
+                        s1, s2, alpha=alpha, G_init=pi0, norm=True
+                    )
                 )
                 if timing:
                     times.append([i, i + 1, time() - current_time])
@@ -978,7 +1048,9 @@ class Embryo:
             self.trsfs = {}
             for i, cs1 in enumerate(cs_to_treat[:-1]):
                 cs2 = cs_to_treat[i + 1]
-                self.trsfs[cs2] = self.register_cs(cs1, cs2, rigid=rigid, final=True, th_d=th_d)
+                self.trsfs[cs2] = self.register_cs(
+                    cs1, cs2, rigid=rigid, final=True, th_d=th_d
+                )
                 if timing:
                     times.append([cs1, cs2, time() - current_time])
                     current_time = time()
@@ -988,7 +1060,8 @@ class Embryo:
 
             self.pos_3D = {
                 c: np.array(list(self.final[c]) + [self.z_pos[c]])
-                for c in self.all_cells if self.cover_slip[c] in cs_to_treat
+                for c in self.all_cells
+                if self.cover_slip[c] in cs_to_treat
             }
 
         if timing:
@@ -1062,9 +1135,9 @@ class Embryo:
         self.KDT_cs_down = {}
         self.paired_cs_down = {}
         for csi in cs_to_treat[1:]:
-            self.paired_cs_down[csi] = set(self.cells_from_cover_slip[csi]) & set(
-                inv_pairing
-            )
+            self.paired_cs_down[csi] = set(
+                self.cells_from_cover_slip[csi]
+            ) & set(inv_pairing)
             self.paired_cs_down[csi] = np.array(list(self.paired_cs_down[csi]))
             pos = [self.final[c] for c in self.paired_cs_down[csi]]
             self.KDT_cs_down[csi] = KDTree(pos)
@@ -1084,15 +1157,18 @@ class Embryo:
                 [self.final[inv_pairing[ni]] for ni in neighbs], axis=0
             )
             d_to_closest_down[c] = np.mean(
-                [np.linalg.norm(self.final[c] - self.final[ni]) for ni in neighbs]
+                [
+                    np.linalg.norm(self.final[c] - self.final[ni])
+                    for ni in neighbs
+                ]
             )
 
         self.KDT_cs_up = {}
         self.paired_cs_up = {}
         for csi in cs_to_treat[:-1]:
-            self.paired_cs_up[csi] = set(self.cells_from_cover_slip[csi]) & set(
-                self.pairing
-            )
+            self.paired_cs_up[csi] = set(
+                self.cells_from_cover_slip[csi]
+            ) & set(self.pairing)
             self.paired_cs_up[csi] = np.array(list(self.paired_cs_up[csi]))
             pos = [self.final[c] for c in self.paired_cs_up[csi]]
             self.KDT_cs_up[csi] = KDTree(pos)
@@ -1112,7 +1188,10 @@ class Embryo:
                 [self.final[self.pairing[ni]] for ni in neighbs], axis=0
             )
             d_to_closest_up[c] = np.mean(
-                [np.linalg.norm(self.final[c] - self.final[ni]) for ni in neighbs]
+                [
+                    np.linalg.norm(self.final[c] - self.final[ni])
+                    for ni in neighbs
+                ]
             )
 
         d_to_closest_vals = list(d_to_closest_down.values()) + list(
@@ -1171,7 +1250,9 @@ class Embryo:
                 for i, g in enumerate(genes):
                     if g in self.all_genes:
                         index = self.all_genes.index(g)
-                        value_traj = [self.gene_expression[c][index] for c in traj]
+                        value_traj = [
+                            self.gene_expression[c][index] for c in traj
+                        ]
                         z_traj_g = [self.z_pos[c] for c in traj]
                         k_interp = min(3, len(z_traj_g) - 1)
                         f_traj_v = InterpolatedUnivariateSpline(
@@ -1258,16 +1339,22 @@ class Embryo:
         rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        equation = (
+            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        )
         if gene is not None and not isinstance(gene, str):
             if len(gene) == 1:
                 gene = gene[0]
-                points, color, *_ = self.produce_em(nb_interp, tissues, gene=gene)
+                points, color, *_ = self.produce_em(
+                    nb_interp, tissues, gene=gene
+                )
                 color = np.array(color)
             else:
                 colors = []
                 for g in gene:
-                    points, color, *_ = self.produce_em(nb_interp, tissues, gene=g)
+                    points, color, *_ = self.produce_em(
+                        nb_interp, tissues, gene=g
+                    )
                     colors.append(color)
                 C = np.array(colors)
                 if min_g1 is None:
@@ -1326,13 +1413,14 @@ class Embryo:
         dist_to_plan = dist_to_plan[plan]
         points_to_plot = points[plan]
         points_to_plot = (
-            np.hstack([points_to_plot, [[1]] * points_to_plot.shape[0]]) @ rot_composed
+            np.hstack([points_to_plot, [[1]] * points_to_plot.shape[0]])
+            @ rot_composed
         )[:, :-1]
         if gene is None:
             if isinstance(color_map, dict):
                 color_to_plot = np.array([color_map[c] for c in color[plan]])
             else:
-                color_to_plot = np.array([(0, 0, 0)]*len(color[plan]))
+                color_to_plot = np.array([(0, 0, 0)] * len(color[plan]))
         elif not isinstance(gene, str):
             color_to_plot = final_C[plan]
         else:
@@ -1402,7 +1490,9 @@ class Embryo:
         rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        equation = (
+            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        )
         points, colors, genes = self.produce_em(
             5, tissues_to_plot=None, gene_list=gene_list
         )
@@ -1412,7 +1502,8 @@ class Embryo:
         plan = np.abs(equation(points)) < thickness
         points_to_plot = points[plan]
         points_to_plot = (
-            np.hstack([points_to_plot, [[1]] * points_to_plot.shape[0]]) @ rot_composed
+            np.hstack([points_to_plot, [[1]] * points_to_plot.shape[0]])
+            @ rot_composed
         )[:, :-1]
         color_to_plot = colors[plan]
         genes_to_plot = genes.T[plan]
@@ -1468,16 +1559,20 @@ class Embryo:
         rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        equation = (
+            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
+        )
         cells = np.array(sorted(self.all_cells))
         pos = np.array([list(self.final[c]) + [self.z_pos[c]] for c in cells])
         kept = cells[(np.abs(equation(pos)) < thickness)]
         data_tmp = self.anndata.copy()
         data_tmp = data_tmp[kept]
-        pos_final = np.array([list(self.final[c]) + [self.z_pos[c]] for c in kept])
-        pos_final = (np.hstack([pos_final, [[1]] * pos_final.shape[0]]) @ rot_composed)[
-            :, :-1
-        ]
+        pos_final = np.array(
+            [list(self.final[c]) + [self.z_pos[c]] for c in kept]
+        )
+        pos_final = (
+            np.hstack([pos_final, [[1]] * pos_final.shape[0]]) @ rot_composed
+        )[:, :-1]
         data_tmp.obsm["X_spatial_registered"] = pos_final
         output_path = Path(output_path)
         if not output_path.parent.exists():
@@ -1500,7 +1595,9 @@ class Embryo:
             Path.mkdir(output_path.parent)
         data_tmp.write(output_path)
 
-    def produce_em(self, nb_intra=5, tissues_to_plot=None, gene=None, gene_list=None):
+    def produce_em(
+        self, nb_intra=5, tissues_to_plot=None, gene=None, gene_list=None
+    ):
         """
         Interpolates beads from the previously computed splines and returns
         the list of the interpolated positions together with a list of values
@@ -1543,7 +1640,9 @@ class Embryo:
             gene_expr = [[] for _ in range(len(gene_list))]
         for c, (min_z, max_z, traj_x, traj_y) in self.all_trajs.items():
             if tissues_to_plot is None or self.tissue[c] in tissues_to_plot:
-                spacing = new_spacing[(min_z <= new_spacing) & (new_spacing <= max_z)]
+                spacing = new_spacing[
+                    (min_z <= new_spacing) & (new_spacing <= max_z)
+                ]
                 points.extend(zip(traj_x(spacing), traj_y(spacing), spacing))
                 if self.all_expr == {} or gene is None:
                     colors.extend([self.tissue[c]] * len(spacing))
@@ -1634,7 +1733,9 @@ class Embryo:
         """
 
         # Position of positive cells in `self.anndata`
-        positive_cells = np.where(self.gene_expr_th[gene] < sub_data[:, gene])[0]
+        positive_cells = np.where(self.gene_expr_th[gene] < sub_data[:, gene])[
+            0
+        ]
 
         # Ids of positive cells
         positive_cells = cells[positive_cells].reshape(1, -1)
@@ -1665,7 +1766,9 @@ class Embryo:
         else:
             data = self.anndata.copy().X
         if cells is None:
-            cells = np.array([c for c in self.all_cells if self.tissue[c] == t])
+            cells = np.array(
+                [c for c in self.all_cells if self.tissue[c] == t]
+            )
         if nb_N is None:
             nb_N = self.whole_tissue_nb_N[t]
 
@@ -1678,7 +1781,9 @@ class Embryo:
         volume_total = len(cells)
 
         # Volume ratio for cell expressing in a tissue for each gene
-        sub_volumes = np.sum(self.gene_expr_th < sub_data, axis=0) / volume_total
+        sub_volumes = (
+            np.sum(self.gene_expr_th < sub_data, axis=0) / volume_total
+        )
 
         # Mask for the list of genes that are expressing enough within the tissue
         mask_expr = (th_vol < sub_volumes) & (sub_volumes < 1 - th_vol)
@@ -1705,7 +1810,9 @@ class Embryo:
         regression_x = "Avg #Neighbors ratio"
         regression_y = "Volume ratio"
 
-        regression = linregress(data_plot[regression_x], data_plot[regression_y])
+        regression = linregress(
+            data_plot[regression_x], data_plot[regression_y]
+        )
         b = regression.intercept
         a = regression.slope
         f = lambda x: a * x + b
@@ -1715,7 +1822,9 @@ class Embryo:
         data_plot["Interesting gene row ID"] = interesting_genes
         if self.all_genes:
             data_plot["Gene names"] = np.array(
-                self.anndata.raw.var_names[data_plot["Interesting gene row ID"]]
+                self.anndata.raw.var_names[
+                    data_plot["Interesting gene row ID"]
+                ]
             )
         else:
             data_plot["Gene names"] = np.array(
@@ -1726,7 +1835,11 @@ class Embryo:
         return data_plot
 
     def get_3D_differential_expression(
-        self, tissues_to_process, th_vol=0.025, all_genes=True, do_2D=False,
+        self,
+        tissues_to_process,
+        th_vol=0.025,
+        all_genes=True,
+        do_2D=False,
     ):
         """
         Compute the 3D spatial differential expression for a list of tissues and
@@ -1763,17 +1876,24 @@ class Embryo:
         if self.whole_tissue_nb_N is None:
             self.whole_tissue_nb_N = {}
             for t in self.all_tissues:
-                cells = np.array([c for c in self.all_cells if self.tissue[c] == t])
+                cells = np.array(
+                    [c for c in self.all_cells if self.tissue[c] == t]
+                )
                 if 0 < len(cells):
-                    self.whole_tissue_nb_N[t] = (self.full_GG[cells].nnz) / len(cells)
+                    self.whole_tissue_nb_N[t] = (
+                        self.full_GG[cells].nnz
+                    ) / len(cells)
                 else:
                     self.whole_tissue_nb_N[t] = 0
 
-
         for t in tissues_to_process:
             if not (t, th_vol) in self.__diff_expr_processed:
-                self.__diff_expr_processed[(t, th_vol)] = self.cell_groups(t, th_vol=th_vol)
-            self.diff_expressed_3D[t] = self.__diff_expr_processed[(t, th_vol)].copy()
+                self.__diff_expr_processed[(t, th_vol)] = self.cell_groups(
+                    t, th_vol=th_vol
+                )
+            self.diff_expressed_3D[t] = self.__diff_expr_processed[
+                (t, th_vol)
+            ].copy()
 
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = tissues_to_process
@@ -1819,14 +1939,20 @@ class Embryo:
         """
         if self.tissues_diff_expre_processed is None:
             self.tissues_diff_expre_processed = []
-        tmp_T = set(tissues_to_process).difference(self.tissues_diff_expre_processed)
+        tmp_T = set(tissues_to_process).difference(
+            self.tissues_diff_expre_processed
+        )
         if len(tmp_T) != 0:
-            print("You asked to plot tissue(s) that were not already processed")
+            print(
+                "You asked to plot tissue(s) that were not already processed"
+            )
             print("The following tissue(s) will be ignored:")
             for t in tmp_T:
                 print(f"\t - id: {t}, name: {self.corres_tissue.get(t, t)}")
         tissues_to_process = list(
-            set(tissues_to_process).intersection(self.tissues_diff_expre_processed)
+            set(tissues_to_process).intersection(
+                self.tissues_diff_expre_processed
+            )
         )
         genes_of_interest = []
         gene_dict = {}
@@ -1834,15 +1960,17 @@ class Embryo:
         genes_in = {}
         added_genes = 1 if repetition_allowed else 4
         if nb_genes is None:
-            nb_genes = min([len(genes) for genes in self.diff_expressed_3D.values()])
+            nb_genes = min(
+                [len(genes) for genes in self.diff_expressed_3D.values()]
+            )
         for t in tissues_to_process:
             data_t = self.diff_expressed_3D[t]
-            G_N = data_t.sort_values("Localization score")["Interesting gene row ID"][
-                : -nb_genes * added_genes - 1 : -1
-            ]
-            G_V = data_t.sort_values("Localization score")["Localization score"][
-                : -nb_genes * added_genes - 1 : -1
-            ]
+            G_N = data_t.sort_values("Localization score")[
+                "Interesting gene row ID"
+            ][: -nb_genes * added_genes - 1 : -1]
+            G_V = data_t.sort_values("Localization score")[
+                "Localization score"
+            ][: -nb_genes * added_genes - 1 : -1]
             genes_of_interest.extend(G_N[:nb_genes])
             for g, v in zip(G_N, G_V):
                 tissue_genes.setdefault(g, []).append(t)
@@ -1865,15 +1993,17 @@ class Embryo:
                 dict_counter = Counter(genes_of_interest)
                 acc += 1
         nb_genes = min(nb_genes, len(genes_of_interest))
-        values = np.zeros((nb_genes * len(tissues_to_process), len(tissues_to_process)))
+        values = np.zeros(
+            (nb_genes * len(tissues_to_process), len(tissues_to_process))
+        )
         tissue_order = []
         for i, g in enumerate(genes_of_interest):
             for j, t in enumerate(tissues_to_process):
                 data_t = self.diff_expressed_3D[t]
                 if g in data_t["Interesting gene row ID"].values:
-                    values[i, j] = data_t[data_t["Interesting gene row ID"] == g][
-                        "Localization score"
-                    ]
+                    values[i, j] = data_t[
+                        data_t["Interesting gene row ID"] == g
+                    ]["Localization score"]
                 if i == 0:
                     tissue_order.append(t)
         # z_score = (values - np.mean(values, axis=1).reshape(-1, 1))/np.std(values, axis=1).reshape(-1, 1)
@@ -1883,14 +2013,25 @@ class Embryo:
             fig, ax = plt.subplots(figsize=(5, max(5, round(1.5 * nb_genes))))
         if fig is None:
             fig = ax.get_figure()
-        ax.imshow(values, interpolation="nearest", cmap="Reds", vmin=np.percentile(values, 2))
+        ax.imshow(
+            values,
+            interpolation="nearest",
+            cmap="Reds",
+            vmin=np.percentile(values, 2),
+        )
         ax.set_xticks(range(len(tissue_order)))
-        ax.set_xticklabels([self.corres_tissue.get(t, t) for t in tissue_order], rotation=90)
+        ax.set_xticklabels(
+            [self.corres_tissue.get(t, t) for t in tissue_order], rotation=90
+        )
         ax.set_yticks(range(values.shape[0]))
         if self.all_genes:
-            ax.set_yticklabels(list(self.anndata.raw[:, genes_of_interest].var_names))
+            ax.set_yticklabels(
+                list(self.anndata.raw[:, genes_of_interest].var_names)
+            )
         else:
-            ax.set_yticklabels(list(self.anndata[:, genes_of_interest].var_names))
+            ax.set_yticklabels(
+                list(self.anndata[:, genes_of_interest].var_names)
+            )
         fig.tight_layout()
         if output_path is not None:
             output_path = Path(output_path)
@@ -1928,7 +2069,10 @@ class Embryo:
                 Default: None
             kwargs are forwarded to the seaborn.scatterplot
         """
-        if self.diff_expressed_3D is not None and t not in self.diff_expressed_3D:
+        if (
+            self.diff_expressed_3D is not None
+            and t not in self.diff_expressed_3D
+        ):
             print(
                 f"The tissue {t} ({self.corres_tissue.get(t, t)}) has not been processed yet."
             )
@@ -1951,9 +2095,9 @@ class Embryo:
             "Relative cell density (to the average cell density within the tissue)"
         )
         if print_top is not None:
-            top_X = data_plot.sort_values("Localization score", ascending=False)[
-                :print_top
-            ]
+            top_X = data_plot.sort_values(
+                "Localization score", ascending=False
+            )[:print_top]
             x_values = top_X[x]
             y_values = top_X[y]
             names = top_X["Gene names"]
@@ -2000,14 +2144,19 @@ class Embryo:
             order (`nb` x m pandas.DataFrame): DataFrame containing
                 the top `nb` localized genes.
         """
-        if self.diff_expressed_3D is None or tissue not in self.diff_expressed_3D:
+        if (
+            self.diff_expressed_3D is None
+            or tissue not in self.diff_expressed_3D
+        ):
             print(
                 f"The tissue {tissue} ({self.corres_tissue.get(tissue, tissue)}) has not been processed yet."
             )
             print("No figure can be made.")
             return
         data_plot = self.diff_expressed_3D[tissue]
-        order = data_plot.sort_values("Localization score", ascending=False)[:nb]
+        order = data_plot.sort_values("Localization score", ascending=False)[
+            :nb
+        ]
         return order
 
     def compute_volumes(self, tissues_to_treat=None, bead_size=(10, 10, 30)):
@@ -2019,7 +2168,7 @@ class Embryo:
                 If left to `None`, the volume for all the tissues are computed.
             bead_size (tuple): Optional, default: `(10, 10, 30)`, distance between beads. Will be use to compute
                 the total volume.
-        
+
         Returns:
             {tissue_id (str): float}: dictionary that maps a tissue to its volume.
         """
@@ -2029,9 +2178,11 @@ class Embryo:
         volumes = {}
         bead_volume = np.product(bead_size)
         for t in tissues_to_treat:
-            volumes[self.corres_tissue.get(t, t)] = len(self.cells_from_tissue.get(t, []))*bead_volume
-        
-        return pd.DataFrame(volumes, index=['Volume']).T
+            volumes[self.corres_tissue.get(t, t)] = (
+                len(self.cells_from_tissue.get(t, [])) * bead_volume
+            )
+
+        return pd.DataFrame(volumes, index=["Volume"]).T
 
     def __init__(
         self,
@@ -2109,13 +2260,19 @@ class Embryo:
         self.all_cover_slips = []
         self.nb_CS_begin_ignore = nb_CS_begin_ignore
         self.nb_CS_end_ignore = nb_CS_end_ignore
-        self.tissues_to_ignore = [] if tissues_to_ignore is None else tissues_to_ignore
+        self.tissues_to_ignore = (
+            [] if tissues_to_ignore is None else tissues_to_ignore
+        )
         if corres_tissue is None:
             self.corres_tissue = {}
-        elif isinstance(corres_tissue, str) or hasattr(corres_tissue, "exists"):
+        elif isinstance(corres_tissue, str) or hasattr(
+            corres_tissue, "exists"
+        ):
             with open(corres_tissue) as f:
                 self.corres_tissue = json.load(f)
-                self.corres_tissue = {eval(k): v for k, v in self.corres_tissue.items()}
+                self.corres_tissue = {
+                    eval(k): v for k, v in self.corres_tissue.items()
+                }
         else:
             self.corres_tissue = corres_tissue
         self.tissue_weight = {} if tissue_weight is None else tissue_weight
