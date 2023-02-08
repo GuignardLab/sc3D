@@ -938,6 +938,7 @@ class Embryo:
 
             start = current_time = time()
             times = []
+        self.trsfs = {}
         if isinstance(method, str) and method.lower() == "paste":
             try:
                 import paste as pst
@@ -951,7 +952,8 @@ class Embryo:
             except:
                 sc_imp = False
                 print(
-                    "scanpy could not be loaded\nno filtering will be applied"
+                    "scanpy could not be loaded\n"
+                    "no filtering will be applied"
                 )
             if work_with_raw:
                 raw_data = self.anndata.raw.to_adata()
@@ -989,7 +991,8 @@ class Embryo:
             else:
                 M_raw_filtered = raw_data.copy()
 
-            slices_id = sorted(self.all_cover_slips)
+            M_raw_filtered.obsm['spatial'] = M_raw_filtered.obsm[self.pos_id]
+            slices_id = sorted(cs_to_treat)
             slices = []
             for s_id in slices_id:
                 slices.append(
@@ -1023,10 +1026,15 @@ class Embryo:
             if timing:
                 times.append([-1, -1, time() - start])
             for i, s_id in enumerate(slices_id):
+                print(f"Applying {i}")
                 if i == 0:
                     m = np.identity(2)
                 else:
                     m = M[i - 1]
+                trsf = np.identity(3)
+                trsf[:2, :2] = m
+                trsf[:2, -1] = trans[i]
+                self.trsfs[slices_id[i]] = trsf
                 cell_slice = list(self.cells_from_cover_slip[s_id])
                 points = np.array([self.pos[c] for c in cell_slice])
                 registered = self.__apply_trsf(m, trans[i], points)
@@ -1045,7 +1053,6 @@ class Embryo:
         else:
             self.GG_cs = {}
             self.KDT_cs = {}
-            self.trsfs = {}
             for i, cs1 in enumerate(cs_to_treat[:-1]):
                 cs2 = cs_to_treat[i + 1]
                 self.trsfs[cs2] = self.register_cs(
