@@ -188,6 +188,7 @@ class Embryo:
         else:
             self.gene_expression = {id_: [] for id_ in ids}
 
+        self.array_id_num_pos = array_id_num_pos
         if array_id in data.obs_keys():
             if data.obs[array_id].dtype != int:
                 exp = re.compile("[0-9]+")
@@ -991,12 +992,16 @@ class Embryo:
             else:
                 M_raw_filtered = raw_data.copy()
 
+            all_cs_names = sorted(self.anndata.obs[self.array_id].unique())
+            exp = re.compile("[0-9]+")
+            init_cs_numbers = [int(exp.findall(x)[self.array_id_num_pos]) for x in all_cs_names]
+            num_to_name = dict(zip(init_cs_numbers, all_cs_names))
             M_raw_filtered.obsm['spatial'] = M_raw_filtered.obsm[self.pos_id]
             slices_id = sorted(cs_to_treat)
             slices = []
             for s_id in slices_id:
                 slices.append(
-                    M_raw_filtered[M_raw_filtered.obs[self.array_id] == s_id]
+                    M_raw_filtered[M_raw_filtered.obs[self.array_id] == num_to_name[s_id]]
                 )
             if timing:
                 start = time()
@@ -1026,7 +1031,7 @@ class Embryo:
             if timing:
                 times.append([-1, -1, time() - start])
             for i, s_id in enumerate(slices_id):
-                print(f"Applying {i}")
+                print(f"Applying {i}th in {s_id}")
                 if i == 0:
                     m = np.identity(2)
                 else:
@@ -1034,7 +1039,7 @@ class Embryo:
                 trsf = np.identity(3)
                 trsf[:2, :2] = m
                 trsf[:2, -1] = trans[i]
-                self.trsfs[slices_id[i]] = trsf
+                self.trsfs[s_id] = trsf
                 cell_slice = list(self.cells_from_cover_slip[s_id])
                 points = np.array([self.pos[c] for c in cell_slice])
                 registered = self.__apply_trsf(m, trans[i], points)
