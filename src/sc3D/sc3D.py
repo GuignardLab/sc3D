@@ -1037,8 +1037,10 @@ class Embryo:
                 else:
                     m = M[i - 1]
                 trsf = np.identity(3)
-                trsf[:2, :2] = m
-                trsf[:2, -1] = trans[i]
+                trsf[:-1, :-1] = M
+                tr = np.identity(3)
+                tr[:-1, -1] = -trans
+                trsf = trsf @ tr
                 self.trsfs[s_id] = trsf
                 cell_slice = list(self.cells_from_cover_slip[s_id])
                 points = np.array([self.pos[c] for c in cell_slice])
