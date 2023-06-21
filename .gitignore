@@ -30,3 +30,5 @@ txt/*.synctex.gz
 txt/*.docx
 *.ai
 test.csv
+*.fdb_latexmk
+*.fls
