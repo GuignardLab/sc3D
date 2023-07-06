@@ -23,8 +23,7 @@ import json
 from pathlib import Path
 
 import anndata
-import transformations as tr
-
+from sc3D.transformations import transformations as tr
 
 class Embryo:
     """
@@ -1348,9 +1347,10 @@ class Embryo:
         if origin is None:
             origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
-        rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
-        rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
-        rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
+        print(tr)
+        rot_x = tr.rotation_matrix(x_angle, [1, 0, 0], origin)
+        rot_y = tr.rotation_matrix(y_angle, [0, 1, 0], origin)
+        rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
         equation = (
@@ -1499,9 +1499,9 @@ class Embryo:
         if origin is None:
             origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
-        rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
-        rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
-        rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
+        rot_x = tr.rotation_matrix(x_angle, [1, 0, 0], origin)
+        rot_y = tr.rotation_matrix(y_angle, [0, 1, 0], origin)
+        rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
         equation = (
@@ -1568,9 +1568,9 @@ class Embryo:
         if origin is None:
             origin = [0, 0, 0]
         x_angle, y_angle, z_angle = angle
-        rot_x = tr.rotation_matrix_py(x_angle, [1, 0, 0], origin)
-        rot_y = tr.rotation_matrix_py(y_angle, [0, 1, 0], origin)
-        rot_z = tr.rotation_matrix_py(z_angle, [0, 0, 1], origin)
+        rot_x = tr.rotation_matrix(x_angle, [1, 0, 0], origin)
+        rot_y = tr.rotation_matrix(y_angle, [0, 1, 0], origin)
+        rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
         equation = (
