@@ -168,6 +168,7 @@ class Embryo:
             self.tissue = dict(
                 zip(ids, map(tissue_map.get, data.obs[tissue_id]))
             )
+            self.corres_tissue = {v: k for k, v in tissue_map.items()}
 
         if gene_name_id in data.var:
             data.var.set_index(gene_name_id, inplace=True)
@@ -722,6 +723,7 @@ class Embryo:
         legend=False,
         color=None,
         cells=None,
+        show=False,
         **kwargs,
     ):
         """
@@ -749,7 +751,8 @@ class Embryo:
             fig (matplotlib.Figure): the created figure
             ax (matplotlib.AxesSubplot): the working axis
         """
-        if ax is None:
+        pre_existing_ax = ax is not None
+        if not pre_existing_ax:
             fig, ax = plt.subplots()
         else:
             fig = ax.get_figure()
@@ -792,9 +795,17 @@ class Embryo:
             ]
         scatter = ax.scatter(*positions.T, c=color, **scatter_args)
         if legend:
-            ax.legend(
-                handles=scatter.legend_elements()[0], labels=np.unique(tissues)
-            )
+            from matplotlib import colormaps
+            cmap = colormaps[scatter_args["cmap"]]
+            mapping = lambda v: (v - scatter_args["vmin"]) / (scatter_args["vmax"] - scatter_args["vmin"])
+            for t in np.unique(tissues):
+                ax.plot([], [], linestyle="", marker=scatter_args["marker"], color=cmap(mapping(t)), label=self.corres_tissue.get(t, t))
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        if not pre_existing_ax:
+            ax.set_aspect("equal")
+            fig.tight_layout()
+        if show:
+            plt.show()
         return fig, ax
 
     def removing_spatial_outliers(self, th=0.2, n_components=3):
@@ -2206,7 +2217,7 @@ class Embryo:
 
     def __init__(
         self,
-        data_path,
+        data_path="",
         tissues_to_ignore=None,
         corres_tissue=None,
         tissue_weight=None,
