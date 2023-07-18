@@ -15,7 +15,7 @@ You can find it on the Guignard Lab GitHub page: [GuignardLab/sc3D](https://gith
 
 This code was developed in the context of the following study:
 
-**Spatial transcriptomic maps of whole mouse embryos.** *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
+[**Spatial transcriptomic maps of whole mouse embryos.**](https://www.nature.com/articles/s41588-023-01435-6) *Abhishek Sampath Kumar, Luyi Tian, Adriano Bolondi et al.*
 
 The __sc3D__ code is based on the [anndata](https://anndata.readthedocs.io/en/latest/) and [Scanpy](https://scanpy.readthedocs.io/en/stable/) libraries and allows to read, register arrays and compute 3D differential expression.
 
