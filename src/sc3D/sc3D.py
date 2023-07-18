@@ -25,6 +25,7 @@ from pathlib import Path
 import anndata
 from sc3D.transformations import transformations as tr
 
+
 class Embryo:
     """
     Embryo class to handle samples from 3D spatial
@@ -993,14 +994,19 @@ class Embryo:
 
             all_cs_names = sorted(self.anndata.obs[self.array_id].unique())
             exp = re.compile("[0-9]+")
-            init_cs_numbers = [int(exp.findall(x)[self.array_id_num_pos]) for x in all_cs_names]
+            init_cs_numbers = [
+                int(exp.findall(x)[self.array_id_num_pos])
+                for x in all_cs_names
+            ]
             num_to_name = dict(zip(init_cs_numbers, all_cs_names))
-            M_raw_filtered.obsm['spatial'] = M_raw_filtered.obsm[self.pos_id]
+            M_raw_filtered.obsm["spatial"] = M_raw_filtered.obsm[self.pos_id]
             slices_id = sorted(cs_to_treat)
             slices = []
             for s_id in slices_id:
                 slices.append(
-                    M_raw_filtered[M_raw_filtered.obs[self.array_id] == num_to_name[s_id]]
+                    M_raw_filtered[
+                        M_raw_filtered.obs[self.array_id] == num_to_name[s_id]
+                    ]
                 )
             if timing:
                 start = time()
@@ -2322,7 +2328,10 @@ class Embryo:
         self.pos_id = pos_id
         self.__diff_expr_processed = {}
 
-        if Path(data_path).suffix in [".h5ad", ".h5", ".csv"]:
+        if Path(data_path).suffix in [".h5ad", ".h5", ".csv"] or (
+            0 < len(sample_list)
+            and Path(sample_list[0]).suffix in [".h5ad", ".h5", ".csv"]
+        ):
             self.read_anndata(
                 data_path,
                 xy_resolution=xy_resolution,

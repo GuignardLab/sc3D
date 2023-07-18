@@ -13,6 +13,7 @@ Léo
 import numpy as np
 import math
 
+
 class transformations:
     _EPS = np.finfo(float).eps * 4.0
 
@@ -60,7 +61,7 @@ class transformations:
         if out is None:
             return data
         return None
-    
+
     @classmethod
     def rotation_matrix(clf, angle, direction, point=None):
         """Return matrix to rotate about axis defined by point and direction.
@@ -88,6 +89,7 @@ class transformations:
 
         """
         import math
+
         sina = math.sin(angle)
         cosa = math.cos(angle)
         direction = clf.unit_vector(direction[:3])
@@ -109,7 +111,7 @@ class transformations:
             point = np.array(point[:3], dtype=np.float64, copy=False)
             M[:3, 3] = point - np.dot(R, point)
         return M
-    
+
     @classmethod
     def vector_norm(clf, data, axis=None, out=None):
         """Return length, i.e. Euclidean norm, of ndarray along axis.
@@ -195,7 +197,9 @@ class transformations:
         )
 
     @classmethod
-    def affine_matrix_from_points(clf, v0, v1, shear=True, scale=True, usesvd=True):
+    def affine_matrix_from_points(
+        clf, v0, v1, shear=True, scale=True, usesvd=True
+    ):
         """Return affine transform matrix to register two point sets.
 
         v0 and v1 are shape (ndims, -1) arrays of at least ndims non-homogeneous
@@ -241,7 +245,7 @@ class transformations:
 
         ndims = v0.shape[0]
         if ndims < 2 or v0.shape[1] < ndims or v0.shape != v1.shape:
-            raise ValueError('input arrays are of wrong shape or type')
+            raise ValueError("input arrays are of wrong shape or type")
 
         # move centroids to origin
         t0 = -np.mean(v0, axis=1)
@@ -252,7 +256,6 @@ class transformations:
         M1 = np.identity(ndims + 1)
         M1[:ndims, ndims] = t1
         v1 += t1.reshape(ndims, 1)
-
 
         if shear:
             # Affine transformation
