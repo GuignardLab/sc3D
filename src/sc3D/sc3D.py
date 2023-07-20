@@ -580,13 +580,13 @@ class Embryo:
             cs1, cs2, rebuild=False, refine=refine, th_d=th_d
         )
         if timing:
-            current_cs_timing["build_pairing"] = time(time() - start)
+            current_cs_timing["build_pairing"] = time() - start
             start = time()
         M = self.register(
             np.array(pos_ref), np.array(pos_flo), apply=False, rigid=rigid
         )
         if timing:
-            current_cs_timing["register"] = time(time() - start)
+            current_cs_timing["register"] = time() - start
             start = time()
         cells_cs2 = self.cells_from_cover_slip[cs2]
         if refine:
@@ -604,7 +604,7 @@ class Embryo:
         if final:
             self.final.update(zip(cells_cs2, new_pos))
         if timing:
-            current_cs_timing["apply"] = time(time() - start)
+            current_cs_timing["apply"] = time() - start
             start = time()
         return M
 
