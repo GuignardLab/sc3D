@@ -714,6 +714,102 @@ class Embryo:
         else:
             return tmp_raw
 
+    def downsample(self, spacing=10, pos_id="pos_3D"):
+        """
+        Downsample the sample slice by slice on a grid defined by `spacing`.
+        For example, downsampling with a spacing of 10
+        will create new slices with a distance between beads of 10 units.
+        The expression of the new "beads" will be the average of the expression
+        of the beads within a radius `spacing/2` from the coordinate of the new bead.
+        The tissue assigned to the new bead is the tissue that is the most present within
+        the orginal beads in the radius `spacing/2`.
+        The function returns a anndata object (`out`) that can then be saved with the
+        anndata `write` function: out.write("path_to_file.h5ad").
+
+        Args:
+            spacing (int): the spacing between the x and y coordinates in the new grid
+            pos_id (str | dict): the position dictionary to take into account
+
+        Returns:
+            (anndata): the resampled anndata dataset with the following `.obs`:
+                - "nb_cells": The number of cells from the original dataset
+                              collected for the "bead"
+                - `self.pos_reg_id`: the new 3D position of the "bead"
+                - `self.tissue_id`: the tissue/cluster of the "bead"
+                - `self.array_id`: the array/puck of the "bead"
+        """
+        from itertools import product
+
+        first = True
+        mapping_from_removed = np.arange(max(self.all_cells) + 1)
+        mapping_from_removed[sorted(self.all_cells)] = np.arange(
+            len(self.all_cells)
+        )
+        if isinstance(pos_id, str):
+            pos_vals = self.__getattribute__(pos_id)
+        else:
+            pos_vals = pos_id
+        for s, s_cells in self.cells_from_cover_slip.items():
+            cells = [c for c in s_cells]
+            pos = np.array([pos_vals[c][:2] for c in s_cells])
+            min_x, min_y = np.min(pos, axis=0)
+            max_x, max_y = np.max(pos, axis=0)
+            x_coords = np.linspace(
+                min_x, max_x, int((max_x - min_x) // spacing)
+            )
+            y_coords = np.linspace(
+                min_y, max_y, int((max_y - min_y) // spacing)
+            )
+            coordinates = np.array(list(product(x_coords, y_coords)))
+            z = self.pos_3D[list(s_cells)[0]][-1] / 4
+            kdtree = KDTree(pos)
+            mapping = kdtree.query_ball_point(coordinates, spacing / 2)
+            final_positions = np.array(
+                [
+                    list(coordinates[i]) + [z]
+                    for i, v in enumerate(mapping)
+                    if 0 < len(v)
+                ]
+            )
+            final_expr = np.array(
+                [
+                    np.mean(
+                        self.anndata.raw[
+                            mapping_from_removed[[cells[vi] for vi in v]]
+                        ].X.A,
+                        axis=0,
+                    )
+                    for v in mapping
+                    if 0 < len(v)
+                ]
+            )
+            nb_cells = np.array([len(v) for v in mapping if 0 < len(v)])
+            tissue = [
+                np.unique(
+                    [self.tissue[cells[vi]] for vi in v], return_counts=True
+                )
+                for v in mapping
+                if 0 < len(v)
+            ]
+            tissue = np.array(
+                [self.corres_tissue[v[0][np.argmax(v[1])]] for v in tissue]
+            )
+            if first:
+                out = anndata.AnnData(final_expr, var=self.anndata.var)
+                out.obs["nb_cells"] = nb_cells
+                out.obsm[self.pos_reg_id] = final_positions
+                out.obs[self.tissue_id] = tissue
+                out.obs[self.array_id] = s
+                first = False
+            else:
+                out_new = anndata.AnnData(final_expr, var=self.anndata.var)
+                out_new.obs["nb_cells"] = nb_cells
+                out_new.obsm[self.pos_reg_id] = final_positions
+                out_new.obs[self.tissue_id] = tissue
+                out_new.obs[self.array_id] = s
+                out = anndata.concat([out, out_new])
+        return out
+
     def plot_coverslip(
         self,
         cs,
@@ -796,11 +892,21 @@ class Embryo:
         scatter = ax.scatter(*positions.T, c=color, **scatter_args)
         if legend:
             from matplotlib import colormaps
+
             cmap = colormaps[scatter_args["cmap"]]
-            mapping = lambda v: (v - scatter_args["vmin"]) / (scatter_args["vmax"] - scatter_args["vmin"])
+            mapping = lambda v: (v - scatter_args["vmin"]) / (
+                scatter_args["vmax"] - scatter_args["vmin"]
+            )
             for t in np.unique(tissues):
-                ax.plot([], [], linestyle="", marker=scatter_args["marker"], color=cmap(mapping(t)), label=self.corres_tissue.get(t, t))
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+                ax.plot(
+                    [],
+                    [],
+                    linestyle="",
+                    marker=scatter_args["marker"],
+                    color=cmap(mapping(t)),
+                    label=self.corres_tissue.get(t, t),
+                )
+            ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         if not pre_existing_ax:
             ax.set_aspect("equal")
             fig.tight_layout()
@@ -2336,8 +2442,10 @@ class Embryo:
         self.tissues_diff_expre_processed = None
         self.umap_id = umap_id
         self.array_id = array_id
+        self.tissue_id = tissue_id
         self.pos_id = pos_id
         self.__diff_expr_processed = {}
+        self.pos_reg_id = pos_reg_id
 
         if Path(data_path).suffix in [".h5ad", ".h5", ".csv"] or (
             0 < len(sample_list)
