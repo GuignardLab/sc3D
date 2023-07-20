@@ -1201,7 +1201,7 @@ class Embryo:
             for i, cs1 in enumerate(cs_to_treat[:-1]):
                 cs2 = cs_to_treat[i + 1]
                 self.trsfs[cs2] = self.register_cs(
-                    cs1, cs2, rigid=rigid, final=True, th_d=th_d
+                    cs1, cs2, rigid=rigid, final=True, th_d=th_d, timing=timing
                 )
                 if timing:
                     times.append([cs1, cs2, time() - current_time])
