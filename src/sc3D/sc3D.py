@@ -480,7 +480,6 @@ class Embryo:
                 [
                     self.final.get(c, self.registered_pos[c])
                     for c in cells_cs1
-                    if self.tissue[c] == tissue
                 ]
             )
             if refine:
@@ -488,7 +487,6 @@ class Embryo:
                     [
                         self.pos_reg_aff[c]
                         for c in cells_cs2
-                        if self.tissue[c] == tissue
                     ]
                 )
             else:
@@ -496,7 +494,6 @@ class Embryo:
                     [
                         self.registered_pos[c]
                         for c in cells_cs2
-                        if self.tissue[c] == tissue
                     ]
                 )
             if len(positions_cs1) > 0 and len(positions_cs2) > 0:
@@ -517,7 +514,8 @@ class Embryo:
                     self.pairing.update(
                         zip(cells_cs1[pairing[0]], cells_cs2[pairing[1]])
                     )
-                except Exception:
+                except Exception as e:
+                    print("re-doing linear sum assignment :(")
                     pairing = linear_sum_assignment(copy_d)
                     pos_ref_tmp = positions_cs1[pairing[0]]
                     pos_flo_tmp = positions_cs2[pairing[1]]
@@ -813,14 +811,14 @@ class Embryo:
                 [self.corres_tissue[v[0][np.argmax(v[1])]] for v in tissue]
             )
             if first:
-                out = anndata.AnnData(final_expr, var=self.anndata.var)
+                out = anndata.AnnData(final_expr, var=self.anndata.raw.var)
                 out.obs["nb_cells"] = nb_cells
                 out.obsm[self.pos_reg_id] = final_positions
                 out.obs[self.tissue_id] = tissue
                 out.obs[self.array_id] = s
                 first = False
             else:
-                out_new = anndata.AnnData(final_expr, var=self.anndata.var)
+                out_new = anndata.AnnData(final_expr, var=self.anndata.raw.var)
                 out_new.obs["nb_cells"] = nb_cells
                 out_new.obsm[self.pos_reg_id] = final_positions
                 out_new.obs[self.tissue_id] = tissue
