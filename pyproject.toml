@@ -32,3 +32,6 @@ push = false
 "setup.cfg" = [
     'version = {version}',
 ]
+"CITATION.cff" = [
+    'version: {version}',
+]
