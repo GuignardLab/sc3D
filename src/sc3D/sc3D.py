@@ -477,24 +477,15 @@ class Embryo:
                 ]
             )
             positions_cs1 = np.array(
-                [
-                    self.final.get(c, self.registered_pos[c])
-                    for c in cells_cs1
-                ]
+                [self.final.get(c, self.registered_pos[c]) for c in cells_cs1]
             )
             if refine:
                 positions_cs2 = np.array(
-                    [
-                        self.pos_reg_aff[c]
-                        for c in cells_cs2
-                    ]
+                    [self.pos_reg_aff[c] for c in cells_cs2]
                 )
             else:
                 positions_cs2 = np.array(
-                    [
-                        self.registered_pos[c]
-                        for c in cells_cs2
-                    ]
+                    [self.registered_pos[c] for c in cells_cs2]
                 )
             if len(positions_cs1) > 0 and len(positions_cs2) > 0:
                 distance = cdist(positions_cs1, positions_cs2)
@@ -536,7 +527,14 @@ class Embryo:
         return pos_ref, pos_flo
 
     def register_cs(
-        self, cs1, cs2, refine=False, rigid=False, final=False, th_d=None, timing=False
+        self,
+        cs1,
+        cs2,
+        refine=False,
+        rigid=False,
+        final=False,
+        th_d=None,
+        timing=False,
     ):
         """
         Registers the puck `cs2` onto the puck `cs1`.
@@ -597,7 +595,6 @@ class Embryo:
             positions_cs2, ((0, 0), (0, 1)), "constant", constant_values=1
         ).T
         new_pos = np.dot(M, pos)[:2].T
-        new_pos = pos[:2].T
         self.pos_reg_aff.update(zip(cells_cs2, new_pos))
         if final:
             self.final.update(zip(cells_cs2, new_pos))
@@ -1594,6 +1591,60 @@ class Embryo:
                 Path.mkdir(output_path.parent)
             fig.savefig(output_path)
         return points_to_plot
+
+    def get_full_transformation(self, cs: int, homogeneous=True) -> np.ndarray:
+        """
+        Get the full transformation matrix for a slide
+
+        Args:
+            cs (int): cover slip id
+            homogeneous (bool): whether to return the transformation matrix
+                as an homogeneous matrix or the decomposed version of the matrix
+                Default: True
+
+        Returns:
+            M (nd.array): 3x3 homogeneous coordinates transformation matrix
+                if `homogeneous` is True. Otherwise it dictionary with the
+                set of transformations (translation, rotation, scaling, shearing)
+        """
+        init_pos = np.array(
+            [self.pos[c] for c in self.cells_from_cover_slip[cs]]
+        )
+        final_pos = np.array(
+            [self.pos_3D[c][:-1] for c in self.cells_from_cover_slip[cs]]
+        )
+
+        M = self.rigid_transform_2D(init_pos.T, final_pos.T)
+        pos = np.pad(
+            init_pos, ((0, 0), (0, 1)), "constant", constant_values=1
+        ).T
+        new_pos = np.dot(M, pos)[:2].T
+        if not np.allclose(new_pos, final_pos):
+            print("Careful the transformation might not be correct")
+        if homogeneous:
+            return M
+        else:
+            tx, ty = M[0, 2], M[1, 2]
+
+            # Extract the upper-left 2x2 matrix (contains rotation, scale, and shear)
+            M = M[:2, :2]
+
+            # Compute scale
+            scale_x = np.linalg.norm(M[:, 0])
+            scale_y = np.linalg.norm(M[:, 1])
+
+            # Compute shear
+            shear = np.dot(M[:, 0] / scale_x, M[:, 1] / scale_y)
+
+            # Remove scale and shear to isolate rotation
+            rotation_trsf = M / [scale_x, scale_y]
+            rotation = np.arctan2(rotation_trsf[1, 0], rotation_trsf[0, 0])
+            return {
+                "translation": [tx, ty],
+                "rotation": np.degrees(rotation),
+                "scale": [scale_x, scale_y],
+                "shear": shear,
+            }
 
     def anndata_slice(
         self,

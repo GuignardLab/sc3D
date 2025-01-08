@@ -33,5 +33,5 @@ push = false
     'version = {version}',
 ]
 "CITATION.cff" = [
-    'version: {version}',
+    "version: {version}",
 ]
