@@ -5,6 +5,6 @@ authors:
   given-names: "Léo"
   orcid: "https://orcid.org/0000-0002-3686-1385"
 title: "sc3D"
-version: 1.1.0
+version: 1.2.0
 date-released: 2023-07-01
 url: "https://github.com/GuignardLab/sc3D"
