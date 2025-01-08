@@ -2378,7 +2378,7 @@ class Embryo:
             tissues_to_treat = self.all_tissues
 
         volumes = {}
-        bead_volume = np.product(bead_size)
+        bead_volume = np.prod(bead_size)
         for t in tissues_to_treat:
             volumes[self.corres_tissue.get(t, t)] = (
                 len(self.cells_from_tissue.get(t, [])) * bead_volume
