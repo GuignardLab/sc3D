@@ -16,7 +16,7 @@ def test_sc3D():
     em.set_zpos()
 
     em = Embryo(
-        f"data/DLPFC.h5ad",
+        "data/DLPFC.h5ad",
         tissue_id="layer_guess",
         pos_id="spatial",
         array_id="z",
@@ -28,6 +28,6 @@ def test_sc3D():
     origin = np.mean([em.final[c] for c in em.all_cells], axis=0)
     origin = np.hstack([origin, 80])
     angles = np.array([-5.0, 5.0, 0.0])
-    points_to_plot = em.plot_slice(
+    _ = em.plot_slice(
         angles, color_map="viridis", origin=origin, thickness=30, nb_interp=5
     )

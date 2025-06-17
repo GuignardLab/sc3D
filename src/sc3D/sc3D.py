@@ -111,7 +111,7 @@ class Embryo:
                 `{0}`. The code will call `path.format(sample_list[0])` for example.
         """
         if sample_list is None or len(sample_list) <= 1:
-            data = anndata.read(str(path))
+            data = anndata.read_h5ad(str(path))
         else:
             path = str(path)
             if path[path.find("{") :].find("}") != -1:
@@ -163,7 +163,7 @@ class Embryo:
             self.pos = dict(zip(ids, data.obsm[pos_id] * xy_resolution))
         try:
             self.tissue = dict(zip(ids, data.obs[tissue_id].astype(int)))
-        except:
+        except Exception as _:
             tissues = data.obs[tissue_id].unique()
             tissue_map = dict(zip(tissues, range(len(tissues))))
             self.tissue = dict(
@@ -339,7 +339,7 @@ class Embryo:
             tissues = {
                 t: cells.intersection(T)
                 for t, T in self.cells_from_tissue.items()
-                if not t in self.tissues_to_ignore
+                if t not in self.tissues_to_ignore
             }
             tissues[-1] = cells
             for tissue, c_tissue in tissues.items():
@@ -459,7 +459,7 @@ class Embryo:
         pos_ref = []
         pos_flo = []
         tissues_to_treat = [
-            t for t in self.all_tissues if not t in self.tissues_to_ignore
+            t for t in self.all_tissues if t not in self.tissues_to_ignore
         ]
         for tissue in tissues_to_treat:
             cells_cs1 = np.array(
@@ -505,7 +505,7 @@ class Embryo:
                     self.pairing.update(
                         zip(cells_cs1[pairing[0]], cells_cs2[pairing[1]])
                     )
-                except Exception as e:
+                except Exception as _:
                     print("re-doing linear sum assignment :(")
                     pairing = linear_sum_assignment(copy_d)
                     pos_ref_tmp = positions_cs1[pairing[0]]
@@ -624,7 +624,7 @@ class Embryo:
                 an adjacency list, a dictionary that maps node ids
                 to the list of neighboring node ids
         """
-        if not data_struct in ["adj-dict", "adj-mat"]:
+        if data_struct not in ["adj-dict", "adj-mat"]:
             raise ValueError(
                 "Data structure for the Gabriel graph not understood"
             )
@@ -902,14 +902,17 @@ class Embryo:
                 )
                 for t in tissues
             ]
-        scatter = ax.scatter(*positions.T, c=color, **scatter_args)
+        _ = ax.scatter(*positions.T, c=color, **scatter_args)
         if legend:
             from matplotlib import colormaps
 
             cmap = colormaps[scatter_args["cmap"]]
-            mapping = lambda v: (v - scatter_args["vmin"]) / (
-                scatter_args["vmax"] - scatter_args["vmin"]
-            )
+
+            def mapping(v):
+                return (v - scatter_args["vmin"]) / (
+                    scatter_args["vmax"] - scatter_args["vmin"]
+                )
+
             for t in np.unique(tissues):
                 ax.plot(
                     [],
@@ -1071,14 +1074,14 @@ class Embryo:
         if isinstance(method, str) and method.lower() == "paste":
             try:
                 import paste as pst
-            except:
+            except Exception as _:
                 print("could not import PASTE, aborting")
                 return
             try:
                 import scanpy as sc
 
                 sc_imp = True
-            except:
+            except Exception as _:
                 sc_imp = False
                 print(
                     "scanpy could not be loaded\n"
@@ -1089,12 +1092,12 @@ class Embryo:
             else:
                 raw_data = self.anndata.copy()
             if sc_imp:
-                if min_counts_genes != None:
+                if min_counts_genes is not None:
                     filter_1 = sc.pp.filter_genes(
                         raw_data, min_counts=min_counts_genes, inplace=False
                     )
-                if min_counts_cells != None:
-                    if min_counts_genes != None:
+                if min_counts_cells is not None:
+                    if min_counts_genes is not None:
                         filter_2 = sc.pp.filter_cells(
                             raw_data[:, filter_1[0]],
                             min_counts=min_counts_cells,
@@ -1106,14 +1109,14 @@ class Embryo:
                             min_counts=min_counts_cells,
                             inplace=False,
                         )
-                if min_counts_genes != None:
-                    if min_counts_cells != None:
+                if min_counts_genes is not None:
+                    if min_counts_cells is not None:
                         M_raw_filtered = raw_data[
                             filter_2[0], filter_1[0]
                         ].copy()
                     else:
                         M_raw_filtered = raw_data[:, filter_1[0]].copy()
-                elif min_counts_cells != None:
+                elif min_counts_cells is not None:
                     M_raw_filtered = raw_data[filter_2[0], :].copy()
                 else:
                     M_raw_filtered = raw_data.copy()
@@ -1487,9 +1490,10 @@ class Embryo:
         rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = (
-            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
-        )
+
+        def equation(pos):
+            return np.sum(new_axis * pos, axis=1) - origin @ new_axis
+
         if gene is not None and not isinstance(gene, str):
             if len(gene) == 1:
                 gene = gene[0]
@@ -1513,10 +1517,13 @@ class Embryo:
                     max_g1 = np.percentile(C, 98, axis=1)[0]
                 if max_g2 is None:
                     max_g2 = np.percentile(C, 98, axis=1)[1]
-                norm = lambda C: (C - [[min_g1], [min_g2]]) / [
-                    [max_g1 - min_g1],
-                    [max_g2 - min_g2],
-                ]
+
+                def norm(C):
+                    return (C - [[min_g1], [min_g2]]) / [
+                        [max_g1 - min_g1],
+                        [max_g2 - min_g2],
+                    ]
+
                 V = norm(C)
                 V[V < 0] = 0
                 V[1 < V] = 1
@@ -1540,8 +1547,13 @@ class Embryo:
                         scale_square[..., ax] = VS[1].reshape(-1, 1)
                     fig, ax = plt.subplots(figsize=(5, 5))
                     ax.imshow(scale_square.swapaxes(1, 0), origin="lower")
-                    recap_g1 = lambda x: x * 255 / max_g1
-                    recap_g2 = lambda x: x * 255 / max_g2
+
+                    def recap_g1(x):
+                        return x * 255 / max_g1
+
+                    def recap_g2(x):
+                        return x * 255 / max_g2
+
                     vals_g1 = np.arange(np.floor(max_g1) + 1, dtype=int)
                     vals_g2 = np.arange(np.floor(max_g2) + 1, dtype=int)
                     ax.set_xticks(recap_g1(vals_g1))
@@ -1692,9 +1704,10 @@ class Embryo:
         rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = (
-            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
-        )
+
+        def equation(pos):
+            return np.sum(new_axis * pos, axis=1) - origin @ new_axis
+
         points, colors, genes = self.produce_em(
             5, tissues_to_plot=None, gene_list=gene_list
         )
@@ -1761,9 +1774,10 @@ class Embryo:
         rot_z = tr.rotation_matrix(z_angle, [0, 0, 1], origin)
         rot_composed = rot_x @ rot_y @ rot_z
         new_axis = (np.hstack([rot_orig, 1]) @ rot_composed)[:-1]
-        equation = (
-            lambda pos: np.sum(new_axis * pos, axis=1) - origin @ new_axis
-        )
+
+        def equation(pos):
+            return np.sum(new_axis * pos, axis=1) - origin @ new_axis
+
         cells = np.array(sorted(self.all_cells))
         pos = np.array([list(self.final[c]) + [self.z_pos[c]] for c in cells])
         kept = cells[(np.abs(equation(pos)) < thickness)]
@@ -2017,7 +2031,10 @@ class Embryo:
         )
         b = regression.intercept
         a = regression.slope
-        f = lambda x: a * x + b
+
+        def f(x):
+            return a * x + b
+
         data_plot["Localization score"] = (
             f(data_plot[regression_x]) - data_plot[regression_y]
         )
@@ -2089,7 +2106,7 @@ class Embryo:
                     self.whole_tissue_nb_N[t] = 0
 
         for t in tissues_to_process:
-            if not (t, th_vol) in self.__diff_expr_processed:
+            if (t, th_vol) not in self.__diff_expr_processed:
                 self.__diff_expr_processed[(t, th_vol)] = self.cell_groups(
                     t, th_vol=th_vol
                 )
