@@ -1,10 +1,10 @@
-cff-version: 1.2.1
+cff-version: 1.2.2
 message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Guignard"
   given-names: "Léo"
   orcid: "https://orcid.org/0000-0002-3686-1385"
 title: "sc3D"
-version: 1.2.1
+version: 1.2.2
 date-released: 2023-07-01
 url: "https://github.com/GuignardLab/sc3D"
