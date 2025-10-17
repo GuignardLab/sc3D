@@ -35,12 +35,10 @@ class Embryo:
     for other kinds of datasets.
     """
 
-    # --- RECENT EDIT --- small helper function to keep compatibility with old and new SciPy versions.
     @staticmethod
     def _to_dense(matrix):
         """Return dense array if input is sparse, otherwise unchanged."""
         return matrix.toarray() if hasattr(matrix, "toarray") else matrix
-    # --- END OF RECENT EDIT ---
 
     def set_zpos(self):
         """
@@ -190,14 +188,12 @@ class Embryo:
             genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
         
-        # --- RECENT EDIT --- Keeps compatibility with old and new SciPy versions.
         if 0 < len(genes_of_interest):
             raw_X = self._to_dense(data.raw[:, self.all_genes].X)
             self.gene_expression = dict(zip(ids, np.array(raw_X)))
             self.data = raw_X
         else:
             self.gene_expression = {id_: [] for id_ in ids}
-        # --- END OF RECENT EDIT ---
 
         self.array_id_num_pos = array_id_num_pos
         if array_id in data.obs_keys():
@@ -794,7 +790,6 @@ class Embryo:
                 ]
             )
             
-            # --- RECENT EDIT --- Keeps compatibility with old and new SciPy versions.
             final_expr = np.array([
                 np.mean(
                     self._to_dense(self.anndata.raw[
@@ -804,7 +799,6 @@ class Embryo:
                 )
                 for v in mapping if len(v) > 0
             ])
-            # --- END OF RECENT EDIT ---
 
             nb_cells = np.array([len(v) for v in mapping if 0 < len(v)])
             tissue = [
