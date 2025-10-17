@@ -35,6 +35,11 @@ class Embryo:
     for other kinds of datasets.
     """
 
+    @staticmethod
+    def _to_dense(matrix):
+        """Return dense array if input is sparse, otherwise unchanged."""
+        return matrix.toarray() if hasattr(matrix, "toarray") else matrix
+
     def set_zpos(self):
         """
         Creates the dictionary containing
@@ -182,11 +187,11 @@ class Embryo:
         elif genes_of_interest == "all":
             genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
+        
         if 0 < len(genes_of_interest):
-            self.gene_expression = dict(
-                zip(ids, np.array(data.raw[:, self.all_genes].X.A))
-            )
-            self.data = data.raw[:, self.all_genes].X.A
+            raw_X = self._to_dense(data.raw[:, self.all_genes].X)
+            self.gene_expression = dict(zip(ids, np.array(raw_X)))
+            self.data = raw_X
         else:
             self.gene_expression = {id_: [] for id_ in ids}
 
@@ -784,18 +789,17 @@ class Embryo:
                     if 0 < len(v)
                 ]
             )
-            final_expr = np.array(
-                [
-                    np.mean(
-                        self.anndata.raw[
-                            mapping_from_removed[[cells[vi] for vi in v]]
-                        ].X.A,
-                        axis=0,
-                    )
-                    for v in mapping
-                    if 0 < len(v)
-                ]
-            )
+            
+            final_expr = np.array([
+                np.mean(
+                    self._to_dense(self.anndata.raw[
+                        mapping_from_removed[[cells[vi] for vi in v]]
+                    ].X),
+                    axis=0,
+                )
+                for v in mapping if len(v) > 0
+            ])
+
             nb_cells = np.array([len(v) for v in mapping if 0 < len(v)])
             tissue = [
                 np.unique(
