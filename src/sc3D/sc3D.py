@@ -187,7 +187,7 @@ class Embryo:
         elif genes_of_interest == "all":
             genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
-        
+
         if 0 < len(genes_of_interest):
             raw_X = self._to_dense(data.raw[:, self.all_genes].X)
             self.gene_expression = dict(zip(ids, np.array(raw_X)))
@@ -511,7 +511,6 @@ class Embryo:
                         zip(cells_cs1[pairing[0]], cells_cs2[pairing[1]])
                     )
                 except Exception as _:
-                    print("re-doing linear sum assignment :(")
                     pairing = linear_sum_assignment(copy_d)
                     pos_ref_tmp = positions_cs1[pairing[0]]
                     pos_flo_tmp = positions_cs2[pairing[1]]
@@ -789,16 +788,21 @@ class Embryo:
                     if 0 < len(v)
                 ]
             )
-            
-            final_expr = np.array([
-                np.mean(
-                    self._to_dense(self.anndata.raw[
-                        mapping_from_removed[[cells[vi] for vi in v]]
-                    ].X),
-                    axis=0,
-                )
-                for v in mapping if len(v) > 0
-            ])
+
+            final_expr = np.array(
+                [
+                    np.mean(
+                        self._to_dense(
+                            self.anndata.raw[
+                                mapping_from_removed[[cells[vi] for vi in v]]
+                            ].X
+                        ),
+                        axis=0,
+                    )
+                    for v in mapping
+                    if len(v) > 0
+                ]
+            )
 
             nb_cells = np.array([len(v) for v in mapping if 0 < len(v)])
             tissue = [
