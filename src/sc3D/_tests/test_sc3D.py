@@ -1,9 +1,9 @@
-from sc3D import Embryo
+from sc3D import SpatialOmicArray
 import numpy as np
 
 
 def test_sc3D():
-    em = Embryo("data/data_test.h5ad", store_anndata=True)
+    em = SpatialOmicArray("data/data_test.h5ad", store_anndata=True)
     assert len(em.all_cells) == 120
     em.smooth_data()
     em.plot_coverslip(7)
@@ -15,7 +15,7 @@ def test_sc3D():
     em.compute_volumes()
     em.set_zpos()
 
-    em = Embryo(
+    em = SpatialOmicArray(
         "data/DLPFC.h5ad",
         tissue_id="layer_guess",
         pos_id="spatial",
