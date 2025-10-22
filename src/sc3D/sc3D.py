@@ -27,9 +27,9 @@ import anndata
 from sc3D.transformations import transformations as tr
 
 
-class Embryo:
+class SpatialOmicArray:
     """
-    Embryo class to handle samples from 3D spatial
+    SpatialOmicArray class to handle samples from 3D spatial
     single cell omics. It was initially designed with
     a specific dataset in mind but it should work
     for other kinds of datasets.
@@ -187,7 +187,7 @@ class Embryo:
         elif genes_of_interest == "all":
             genes_of_interest = data.var_names
         self.all_genes = sorted(genes_of_interest)
-        
+
         if 0 < len(genes_of_interest):
             raw_X = self._to_dense(data.raw[:, self.all_genes].X)
             self.gene_expression = dict(zip(ids, np.array(raw_X)))
@@ -695,7 +695,7 @@ class Embryo:
         """
         Smooth the gene expression according to the spatial neighborhood relationship.
         The spatial neighborhood relationship is computed as the Gabriel graph.
-        The smoothed expression (\(s_c \) of the gene $g$ of a cell $c$ which has
+        The smoothed expression ($s_c$) of the gene $g$ of a cell $c$ which has
         a set of neighbors $N_c = \{n_i\}$ is computed as follow:
             $$s_c = \\frac{\sum_{n_i \in N_c} ||n_i - c||.g_{n_i}}{\sum_{n_i \in N_c} ||n_i - c||}$$
         where $||n_i - c||$ is the distance between $n_i$ and $c$ and $g_{n_i}$ is the measured
@@ -789,16 +789,21 @@ class Embryo:
                     if 0 < len(v)
                 ]
             )
-            
-            final_expr = np.array([
-                np.mean(
-                    self._to_dense(self.anndata.raw[
-                        mapping_from_removed[[cells[vi] for vi in v]]
-                    ].X),
-                    axis=0,
-                )
-                for v in mapping if len(v) > 0
-            ])
+
+            final_expr = np.array(
+                [
+                    np.mean(
+                        self._to_dense(
+                            self.anndata.raw[
+                                mapping_from_removed[[cells[vi] for vi in v]]
+                            ].X
+                        ),
+                        axis=0,
+                    )
+                    for v in mapping
+                    if len(v) > 0
+                ]
+            )
 
             nb_cells = np.array([len(v) for v in mapping if 0 < len(v)])
             tissue = [
@@ -1945,7 +1950,7 @@ class Embryo:
             gene (int): gene id (position in the `self.anndata` array)
             sub_data (ndarray): sliced version of `self.anndata` only containing
                 the beads corresponding to the tissue to analyse
-            cells (ndarray): ids of the cells in `Embryo` ordered similarly to
+            cells (ndarray): ids of the cells in `SpatialOmicArray` ordered similarly to
                 the `self.anndata` array (to do correspondancy)
         Returns:
             avg_nb_neighbs (float): average number of positive neighbors per
@@ -2428,7 +2433,7 @@ class Embryo:
         sample_list=None,
     ):
         """
-        Initialize an spatial single cell embryo
+        Initialize an spatial single cell SpatialOmicArray
 
         Args:
             data_path (str): path to the file containing the sc data (h5ad format)
