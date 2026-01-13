@@ -148,10 +148,10 @@ class SpatialOmicArray:
                 + orig[-self.nb_CS_end_ignore :]
             )
             data = data[~(data.obs[array_id].isin(cs_to_remove))]
-        if data.raw is not None:
-            data.raw = data.raw.to_adata()
-        else:
-            data.raw = data.copy()
+        # if data.raw is not None:
+        #     data.raw = data.raw.to_adata()
+        # else:
+        #     data.raw = data.copy()
         ids = range(len(data))
         self.all_cells = list(ids)
         self.cell_names = dict(
@@ -724,12 +724,9 @@ class SpatialOmicArray:
         dist_sum = GG.sum(axis=1)
         product_n = product / dist_sum.reshape(-1, 1)
         product_sparse = sp.sparse.csr_array(product_n)
-        tmp_raw = self.anndata.raw.to_adata()
-        tmp_raw.X = product_sparse.toarray()
-        if inplace:
-            self.anndata.raw = tmp_raw
-        else:
-            return tmp_raw
+        # tmp_raw = self.anndata.raw.to_adata()
+        self.anndata.X = product_sparse.toarray()
+        return self.anndata
 
     def downsample(self, spacing=10, pos_id="pos_3D"):
         """
@@ -991,7 +988,6 @@ class SpatialOmicArray:
         l_all = list(self.all_cells)
         if hasattr(self, "anndata"):
             self.anndata = self.anndata[l_all]
-            self.anndata.raw = self.anndata.raw.to_adata()
         for t, c in self.cells_from_cover_slip.items():
             c.intersection_update(self.filtered_cells)
         for t, c in self.cells_from_tissue.items():
@@ -1096,9 +1092,9 @@ class SpatialOmicArray:
                     "no filtering will be applied"
                 )
             if work_with_raw:
-                raw_data = self.anndata.raw.to_adata()
+                raw_data = self.anndata.raw
             else:
-                raw_data = self.anndata.copy()
+                raw_data = self.anndata
             if sc_imp:
                 if min_counts_genes is not None:
                     filter_1 = sc.pp.filter_genes(
