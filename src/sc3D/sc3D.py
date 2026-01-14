@@ -5,6 +5,7 @@ file 'LICENCE', which is part of this source code package.
 Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 from collections import Counter
+from copy import copy
 from itertools import combinations
 import re
 
@@ -17,7 +18,9 @@ from scipy.spatial import KDTree, Delaunay
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
-from scipy.stats import zscore, linregress
+from scipy.stats import zscore
+from scipy.stats import linregress
+from scipy.sparse import issparse
 from seaborn import scatterplot
 import json
 from pathlib import Path
@@ -1806,7 +1809,33 @@ class SpatialOmicArray:
         Args:
             output_path (str): path to the output anndata file ('.h5ad' file)
         """
-        data_tmp = self.anndata.copy()
+        a = self.anndata
+
+        if a.is_view:
+            # Materialize from the parent using name-based indexers
+            ref = a._adata_ref  # parent AnnData
+
+            rows = ref.obs_names.get_indexer(a.obs_names)
+            cols = ref.var_names.get_indexer(a.var_names)
+
+            if (rows < 0).any() or (cols < 0).any():
+                raise ValueError("Could not map view obs/var names back to parent AnnData.")
+
+            X = ref.X[rows, :]          # row subset (array x slice)
+            X = X[:, cols]              # col subset (slice x array)
+
+            # ensure CSR matrix (optional but usually safer for writing)
+            if issparse(X):
+                X = X.tocsr()
+
+            data_tmp = anndata.AnnData(X=X, obs=a.obs.copy(), var=a.var.copy())
+            # keep uns (optional)
+            data_tmp.uns = dict(a.uns)
+
+        else:
+            data_tmp = a  # already actual object, not a view
+        
+        # add registered coords
         all_c_sorted = sorted(self.all_cells)
         pos_final = np.array([self.pos_3D[c] for c in all_c_sorted])
         data_tmp.obsm["X_spatial_registered"] = pos_final
