@@ -1812,28 +1812,42 @@ class SpatialOmicArray:
         a = self.anndata
 
         if a.is_view:
-            # Materialize from the parent using name-based indexers
-            ref = a._adata_ref  # parent AnnData
+            ref = a._adata_ref
 
             rows = ref.obs_names.get_indexer(a.obs_names)
             cols = ref.var_names.get_indexer(a.var_names)
-
             if (rows < 0).any() or (cols < 0).any():
                 raise ValueError("Could not map view obs/var names back to parent AnnData.")
 
-            X = ref.X[rows, :]          # row subset (array x slice)
-            X = X[:, cols]              # col subset (slice x array)
-
-            # ensure CSR matrix (optional but usually safer for writing)
+            X = ref.X[rows, :]
+            X = X[:, cols]
             if issparse(X):
                 X = X.tocsr()
 
             data_tmp = anndata.AnnData(X=X, obs=a.obs.copy(), var=a.var.copy())
-            # keep uns (optional)
             data_tmp.uns = dict(a.uns)
 
+            # --- IMPORTANT: keep all genes accessible for the napari viewer ---
+            # The viewer expects embryo.anndata.raw to contain the full gene set.
+            if ref.raw is not None:
+                Xraw = ref.raw.X[rows, :]  # keep ALL genes (no col subset)
+                if issparse(Xraw):
+                    Xraw = Xraw.tocsr()
+                raw_tmp = anndata.AnnData(X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy())
+                data_tmp.raw = raw_tmp
+
         else:
-            data_tmp = a  # already actual object, not a view
+            data_tmp = a  # already materialized
+            # Ensure raw exists for viewer if possible
+            if data_tmp.raw is None and getattr(a, "_adata_ref", None) is not None and a._adata_ref.raw is not None:
+                ref = a._adata_ref
+                rows = ref.obs_names.get_indexer(a.obs_names)
+                Xraw = ref.raw.X[rows, :]
+                if issparse(Xraw):
+                    Xraw = Xraw.tocsr()
+                raw_tmp = anndata.AnnData(X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy())
+                data_tmp.raw = raw_tmp
+
         
         # add registered coords
         all_c_sorted = sorted(self.all_cells)
