@@ -1,11 +1,59 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=42.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.briefcase]
-project_name = "sc-3D"
-author = "Leo Guignard"
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+authors = [
+    { name = "Léo Guignard", email = "leo.guignard@univ-amu.fr"},
+    { name = "Miquel Sendra"},
+]
+maintainers = [
+    {name = "Léo Guignard", email = "leo.guignard@univ-amu.fr"}
+]
+name = "sc-3D"
+description = "Array alignment and 3D differential expression for 3D spatial omics"
+version = "2.0.0"
 license = "MIT"
+license-files = [ "LICENSE" ]
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">= 3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "scipy",
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "seaborn",
+    "scikit-learn",
+    "anndata",
+]
+
+[project.optional-dependencies]
+testing = [
+    "tox",
+    "pytest",
+    "pytest-cov",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/GuignardLab/sc3D/issues"
+"Documentation" = "https://github.com/GuignardLab/sc3D#README.md"
+"Source Code" = "https://github.com/GuignardLab/sc3D"
+"User Support" = "https://github.com/GuignardLab/sc3D/issues"
 
 [tool.black]
 line-length = 79
@@ -25,12 +73,10 @@ push = false
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
     'current_version = "{version}"',
+    'version = "{version}"',
 ]
 "src/sc3D/__init__.py" = [
     '__version__ = "{version}"',
-]
-"setup.cfg" = [
-    'version = {version}',
 ]
 "CITATION.cff" = [
     "version: {version}",
