@@ -199,7 +199,7 @@ class SpatialOmicArray:
             self.gene_expression = {id_: [] for id_ in ids}
 
         self.array_id_num_pos = array_id_num_pos
-        if array_id in data.obs_keys():
+        if array_id in data.obs:
             if data.obs[array_id].dtype != int:
                 exp = re.compile("[0-9]+")
                 cs = list(
@@ -728,7 +728,8 @@ class SpatialOmicArray:
         product_n = product / dist_sum.reshape(-1, 1)
         product_sparse = sp.sparse.csr_array(product_n)
         # tmp_raw = self.anndata.raw.to_adata()
-        self.anndata.X = product_sparse.toarray()
+        print(f"{self.anndata.X.shape=}\n{product_sparse.toarray().shape=}")
+        self.anndata.raw._X = product_sparse.toarray()
         return self.anndata
 
     def downsample(self, spacing=10, pos_id="pos_3D"):
@@ -1817,7 +1818,9 @@ class SpatialOmicArray:
             rows = ref.obs_names.get_indexer(a.obs_names)
             cols = ref.var_names.get_indexer(a.var_names)
             if (rows < 0).any() or (cols < 0).any():
-                raise ValueError("Could not map view obs/var names back to parent AnnData.")
+                raise ValueError(
+                    "Could not map view obs/var names back to parent AnnData."
+                )
 
             X = ref.X[rows, :]
             X = X[:, cols]
@@ -1833,22 +1836,29 @@ class SpatialOmicArray:
                 Xraw = ref.raw.X[rows, :]  # keep ALL genes (no col subset)
                 if issparse(Xraw):
                     Xraw = Xraw.tocsr()
-                raw_tmp = anndata.AnnData(X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy())
+                raw_tmp = anndata.AnnData(
+                    X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy()
+                )
                 data_tmp.raw = raw_tmp
 
         else:
             data_tmp = a  # already materialized
             # Ensure raw exists for viewer if possible
-            if data_tmp.raw is None and getattr(a, "_adata_ref", None) is not None and a._adata_ref.raw is not None:
+            if (
+                data_tmp.raw is None
+                and getattr(a, "_adata_ref", None) is not None
+                and a._adata_ref.raw is not None
+            ):
                 ref = a._adata_ref
                 rows = ref.obs_names.get_indexer(a.obs_names)
                 Xraw = ref.raw.X[rows, :]
                 if issparse(Xraw):
                     Xraw = Xraw.tocsr()
-                raw_tmp = anndata.AnnData(X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy())
+                raw_tmp = anndata.AnnData(
+                    X=Xraw, obs=a.obs.copy(), var=ref.raw.var.copy()
+                )
                 data_tmp.raw = raw_tmp
 
-        
         # add registered coords
         all_c_sorted = sorted(self.all_cells)
         pos_final = np.array([self.pos_3D[c] for c in all_c_sorted])
