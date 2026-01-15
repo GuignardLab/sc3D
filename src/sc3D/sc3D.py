@@ -5,7 +5,6 @@ file 'LICENCE', which is part of this source code package.
 Author: Leo Guignard (leo.guignard...@AT@...univ-amu.fr)
 """
 from collections import Counter
-from copy import copy
 from itertools import combinations
 import re
 
