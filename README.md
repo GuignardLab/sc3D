@@ -1,7 +1,7 @@
 
 [![License MIT](https://img.shields.io/pypi/l/sc-3D.svg?color=green)](https://github.com/GuignardLab/sc3D/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/sc-3D.svg?color=green)](https://pypi.org/project/sc-3D)
-[![Python Version](https://img.shields.io/pypi/pyversions/sc-3D.svg?color=green)](https://python.org)
+[![Python Version](https://img.shields.io/pypi/pyversions/sc-3D.svg)](https://python.org)
 [![tests](https://github.com/GuignardLab/sc3D/workflows/tests/badge.svg)](https://github.com/GuignardLab/sc3D/actions)
 [![codecov](https://codecov.io/gh/GuignardLab/sc3D/branch/main/graph/badge.svg)](https://codecov.io/gh/GuignardLab/sc3D)
 [![Downloads](https://static.pepy.tech/badge/sc-3d)](https://pepy.tech/project/sc-3d)
